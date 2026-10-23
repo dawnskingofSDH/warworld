@@ -2,6 +2,8 @@
 
 一部完全离线的 2D 中世纪大战略游戏。无需安装、无需构建、无需联网：直接用浏览器打开 `index.html` 即可开始。
 
+**在线试玩**：<https://dawnskingofsdh.github.io/warworld/>
+
 ## 运行
 
 - 推荐 Chrome / Edge / Firefox 的较新版本。
