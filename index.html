@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1c221b">
+  <title>Warworld · 战争世界</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <!-- Inline icon library, available offline -->
+  <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="ico-build" viewBox="0 0 24 24"><path d="M3 21V10l4-3V4h4v1l3-2 7 5v13H3Zm4-2h3v-5h4v5h3V9.2l-5-3.6-5 3.4V19Z"/><path d="M9 6h2v3H9zM10 12h4v3h-4z"/></symbol>
+    <symbol id="ico-crown" viewBox="0 0 24 24"><path d="m3 8 4 3 5-6 5 6 4-3-2 11H5L3 8Zm3.7 3.8L5.8 17h12.4l-.9-5.2-2.7 2L12 8.9l-2.6 4.9-2.7-2Z"/><path d="M5 19h14v2H5z"/></symbol>
+    <symbol id="ico-diplomacy" viewBox="0 0 24 24"><path d="M9 6.5A5.2 5.2 0 1 0 9 17.5M15 6.5a5.2 5.2 0 1 1 0 11M8.2 12h7.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="m7.4 10.5-1.8 1.5 1.8 1.5M16.6 10.5l1.8 1.5-1.8 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ico-tech" viewBox="0 0 24 24"><path d="M5 3h11a3 3 0 0 1 3 3v15H7a3 3 0 0 1-3-3V4a1 1 0 0 1 1-1Zm2 2v11.2c.4-.1.7-.2 1.2-.2H17V6a1 1 0 0 0-1-1H7Zm-1 13a1 1 0 0 0 1 1h11v-1H7.2A1 1 0 0 0 6 18Zm3-10h6v2H9V8Zm0 4h6v2H9v-2Z"/></symbol>
+    <symbol id="ico-military" viewBox="0 0 24 24"><path d="m3 21 2-6 7-7 1.4-5.4 4 4L12 8l-7 7-6 2Zm9-11 2 2 5-5-3-3-4 6ZM15 15l6 6-2 2-6-6 2-2ZM3 3l4 1L4 7 3 3Z"/></symbol>
+    <symbol id="ico-chronicle" viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm0 2v14h14V5H5Zm2 2h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h7v2H7v-2Z"/></symbol>
+    <symbol id="ico-help" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm-.2 3A3.3 3.3 0 0 0 8.5 10h2.1c0-.8.5-1.3 1.2-1.3.6 0 1.1.4 1.1 1 0 .5-.2.8-1 1.4-.9.7-1.3 1.4-1.3 2.6v.5h2.2v-.4c0-.7.2-1 1-1.6.9-.7 1.3-1.4 1.3-2.5A3.1 3.1 0 0 0 12 6.2 3 3 0 0 0 11.8 9Zm-.8 9.2h2.2v2.1H11v-2.1Z"/></symbol>
+    <symbol id="ico-menu" viewBox="0 0 24 24"><path d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z"/></symbol>
+    <symbol id="ico-bell" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2v.6A6 6 0 0 1 18 10v5l2 2v1H4v-1l2-2v-5a6 6 0 0 1 4-5.4V4a2 2 0 0 1 2-2Zm-2 18h4a2 2 0 0 1-4 0Z"/></symbol>
+    <symbol id="ico-pause" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4Zm8 0h4v16h-4V4Z"/></symbol>
+    <symbol id="ico-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8V4Z"/></symbol>
+    <symbol id="ico-close" viewBox="0 0 24 24"><path d="m5 4 15 15-1.4 1.4L4 5.4 5 4Zm13.6 0L20 5.4 5.4 20 4 18.6 18.6 4Z"/></symbol>
+    <symbol id="ico-arrow-right" viewBox="0 0 24 24"><path d="m13 4 8 8-8 8-1.4-1.4 5.6-5.6H3v-2h14.2l-5.6-5.6L13 4Z"/></symbol>
+    <symbol id="ico-arrow-left" viewBox="0 0 24 24"><path d="m11 4 1.4 1.4L6.8 11H21v2H6.8l5.6 5.6L11 20l-8-8 8-8Z"/></symbol>
+    <symbol id="ico-hammer" viewBox="0 0 24 24"><path d="m14 2 8 8-3 3-3-3-2 2 5 5-2 2-5-5-6 6-3-3 6-6 2-2 3-3 3-3L14 2Z"/></symbol>
+    <symbol id="ico-people" viewBox="0 0 24 24"><path d="M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0 2C5 13 2 14.7 2 17.5V21h13v-3.5C15 14.7 12 13 8.5 13Zm8.2-8.7a3 3 0 0 1 0 5.9v2a5 5 0 0 0 1.3-.2c1.3 1 2 2.3 2 4V21h3v-2.7c0-2.6-2.2-4.2-5.2-4.7a5 5 0 0 0-1.1-8.3Z"/></symbol>
+    <symbol id="ico-stability" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6l-8-4Zm0 2.2 6 3V12c0 3.9-2.5 6.7-6 8.1-3.5-1.4-6-4.2-6-8.1V7.2l6-3Zm-1 3.3h2v5h4v2h-4v4h-2v-4H7v-2h4v-5Z"/></symbol>
+    <symbol id="ico-scroll" viewBox="0 0 24 24"><path d="M5 3h13a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3h2a1 1 0 0 0 1 1v-1H4V5a2 2 0 0 1 1-2Zm2 2v11h10V5H7Zm2 2h6v2H9V7Zm0 4h6v2H9v-2Z"/></symbol>
+    <symbol id="ico-zoom" viewBox="0 0 24 24"><path d="M10 2a8 8 0 1 0 4.9 14.3l5.4 5.4 1.4-1.4-5.4-5.4A8 8 0 0 0 10 2Zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm-1 2v3H6v2h3v3h2v-3h3V9h-3V6H9Z"/></symbol>
+    <symbol id="ico-flag" viewBox="0 0 24 24"><path d="M5 2h2v20H5V2Zm3 2h11l-2 4 2 4H8V4Z"/></symbol>
+    <symbol id="ico-coin" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm-1 3v2.2c-1.6.3-2.6 1.3-2.6 2.7 0 1.6 1.2 2.3 3.1 2.8 1.5.4 1.8.6 1.8 1.1 0 .5-.4.8-1.3.8-1 0-1.5-.4-1.6-1.3H8.3c.1 1.6 1.1 2.7 2.7 3V20h2v-1.6c1.7-.3 2.8-1.3 2.8-2.9 0-1.7-1.3-2.4-3.3-2.9-1.4-.4-1.6-.6-1.6-1.1 0-.5.4-.7 1.1-.7.8 0 1.2.4 1.3 1.1h2.2c-.1-1.4-1-2.4-2.5-2.7V7h-2Z"/></symbol>
+    <symbol id="ico-plus" viewBox="0 0 24 24"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4Z"/></symbol>
+    <symbol id="ico-minus" viewBox="0 0 24 24"><path d="M4 11h16v2H4v-2Z"/></symbol>
+    <symbol id="ico-check" viewBox="0 0 24 24"><path d="m4 12 5 5L21 6l-1.5-1.5L9 14.5 5.5 11 4 12Z"/></symbol>
+    <symbol id="ico-lock" viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3h2v11H5V10h2Zm2 0h6V7a3 3 0 0 0-6 0v3Zm3 3a2 2 0 0 0-1 3.7V19h2v-2.3a2 2 0 0 0-1-3.7Z"/></symbol>
+    <symbol id="ico-focus" viewBox="0 0 24 24"><path d="M3 3h7v2H5v5H3V3Zm11 0h7v7h-2V5h-5V3ZM3 14h2v5h5v2H3v-7Zm16 0h2v7h-7v-2h5v-5Z"/></symbol>
+    <symbol id="ico-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v7c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5l-8-3Zm0 2.2 6 2.2V12c0 3.7-2.4 6.6-6 8-3.6-1.4-6-4.3-6-8V6.4l6-2.2Z"/></symbol>
+  </svg>
+
+  <canvas id="world" aria-label="战争世界地图"></canvas>
+
+  <div id="game-shell" class="hidden">
+    <div id="hud">
+      <header class="topbar">
+        <div class="realm-block">
+          <canvas id="crest-canvas" width="94" height="108" aria-label="家族纹章"></canvas>
+          <div class="realm-text">
+            <div id="realm-name" class="realm-name">无名王朝</div>
+            <div class="realm-sub"><span id="realm-rank">伯国</span><span class="sep">·</span><span id="realm-pop">人口 5 / 6</span></div>
+            <div class="realm-date"><span id="date-label">主历 1 年 · 春</span><span id="day-label">第 1 日</span></div>
+          </div>
+        </div>
+        <div class="resource-bar parchment-strip" id="resource-bar" aria-label="资源"></div>
+        <div class="status-block">
+          <button class="icon-btn chronicle-btn" id="chronicle-btn" title="编年史"><svg><use href="#ico-bell"></use></svg><span id="unread-badge" class="badge hidden">0</span></button>
+          <div class="speed-box">
+            <button class="speed-btn" data-speed="0" title="暂停（空格）"><svg><use href="#ico-pause"></use></svg></button>
+            <button class="speed-btn half" data-speed="0.5" title="半速（1）">½</button>
+            <button class="speed-btn active" data-speed="1" title="正常速度（2）">1×</button>
+            <button class="speed-btn" data-speed="2" title="双倍速度（3）">2×</button>
+          </div>
+          <button class="icon-btn menu-btn" id="menu-btn" title="菜单（Esc）"><svg><use href="#ico-menu"></use></svg></button>
+        </div>
+      </header>
+
+      <nav id="main-nav" aria-label="主要面板">
+        <button class="nav-btn" data-panel="build" title="建造（B）"><svg><use href="#ico-build"></use></svg><span>建造</span></button>
+        <button class="nav-btn" data-panel="internal" title="内政（I）"><svg><use href="#ico-crown"></use></svg><span>内政</span></button>
+        <button class="nav-btn" data-panel="diplomacy" title="外交（D）"><svg><use href="#ico-diplomacy"></use></svg><span>外交</span></button>
+        <button class="nav-btn" data-panel="tech" title="科技（T）"><svg><use href="#ico-tech"></use></svg><span>科技</span></button>
+        <button class="nav-btn" data-panel="military" title="军事（M）"><svg><use href="#ico-military"></use></svg><span>军事</span></button>
+        <div class="nav-rule"></div>
+        <button class="nav-btn small" data-panel="chronicle" title="编年史"><svg><use href="#ico-chronicle"></use></svg><span>史册</span></button>
+        <button class="nav-btn small" data-panel="help" title="王国法典（H）"><svg><use href="#ico-help"></use></svg><span>法典</span></button>
+        <button class="nav-btn small" data-panel="settings" title="设置"><svg><use href="#ico-menu"></use></svg><span>设置</span></button>
+      </nav>
+
+      <div id="adviser-widget" class="adviser-widget">
+        <div class="adviser-head"><span class="wax-seal">谕</span><span>王室谕令</span><span id="adviser-count">0/9</span><button id="adviser-collapse" title="收起">−</button></div>
+        <div class="adviser-body"><div class="advice-title">从五名臣民开始</div><div class="advice-text">先安排居民采集食物与木材，再建造民宅。</div><div id="adviser-progress" class="thin-progress"><i style="width:0%"></i></div></div>
+      </div>
+
+      <div id="minimap-wrap" class="minimap-wrap">
+        <div class="minimap-head"><span>天下舆图</span><span id="minimap-coord">—</span></div>
+        <canvas id="minimap" width="300" height="214"></canvas>
+        <div class="minimap-legend"><span><i class="dot player"></i>你的领地</span><span><i class="dot rival"></i>列强</span></div>
+      </div>
+
+      <div id="placement-hint" class="placement-hint hidden">
+        <span id="placement-text">选择位置</span>
+        <span class="placement-keys">左键放置 · 右键/ESC 取消</span>
+      </div>
+
+      <div id="selection-bar" class="selection-bar hidden">
+        <div id="selection-cards" class="selection-cards"></div>
+        <div id="selection-actions" class="selection-actions"></div>
+      </div>
+
+      <aside id="context-drawer" class="context-drawer hidden"></aside>
+
+      <div id="build-panel" class="side-panel hidden"></div>
+
+      <div id="toast-layer" class="toast-layer" aria-live="polite"></div>
+      <div id="paused-indicator" class="paused-indicator hidden">时间暂停</div>
+      <div id="waiting-prompt" class="waiting-prompt hidden">等待你的决定</div>
+      <div id="zoom-hint" class="zoom-hint">滚轮缩放 · 中键拖动地图 · 方向键移动视野</div>
+    </div>
+  </div>
+
+  <main id="menu-screen" class="screen menu-screen">
+    <div class="menu-scene" aria-hidden="true">
+      <div class="scene-sky"></div>
+      <div class="scene-sun"></div>
+      <div class="scene-cloud cloud-one"></div>
+      <div class="scene-cloud cloud-two"></div>
+      <svg class="scene-art" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="mtnFar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#58625d"/><stop offset="1" stop-color="#343d3a"/></linearGradient>
+          <linearGradient id="mtnNear" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3e4a42"/><stop offset="1" stop-color="#242e28"/></linearGradient>
+          <linearGradient id="hillsFar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b553c"/><stop offset="1" stop-color="#2d382b"/></linearGradient>
+          <linearGradient id="castleStone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#706a5b"/><stop offset="1" stop-color="#3a3832"/></linearGradient>
+          <linearGradient id="castleRoof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#514a44"/><stop offset="1" stop-color="#292826"/></linearGradient>
+          <linearGradient id="foreground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c241c"/><stop offset="1" stop-color="#0e120f"/></linearGradient>
+          <radialGradient id="windowGlow"><stop offset="0" stop-color="#ffd887"/><stop offset="1" stop-color="#e5ab44"/></radialGradient>
+          <filter id="softGlow"><feGaussianBlur stdDeviation="8"/></filter>
+          <filter id="mistBlur"><feGaussianBlur stdDeviation="18"/></filter>
+        </defs>
+        <g class="scene-birds" fill="none" stroke="#2e2a22" stroke-width="2">
+          <path d="M1050 190q12-10 24 0M1074 190q12-10 24 0M1120 230q9-8 18 0M1138 230q9-8 18 0M970 150q8-7 16 0"/>
+        </g>
+        <g opacity=".82">
+          <path d="M0 500 160 330 290 460 430 280 560 440 690 320 850 500 980 370 1130 470 1290 290 1450 450 1600 350V650H0Z" fill="url(#mtnFar)"/>
+          <path d="m410 305 25-25 24 22 30-10 20 35-42 21-38-8Z" fill="#8c8e82" opacity=".45"/>
+          <path d="m1270 316 30-26 35 25 24-9 22 27-44 25-42-7Z" fill="#98998c" opacity=".35"/>
+          <path d="m106 382 28-25 28 25 22-14 21 29-43 18-38-7Z" fill="#8c8e82" opacity=".3"/>
+        </g>
+        <g opacity=".92">
+          <path d="M0 590 170 430 310 540 470 390 640 560 790 430 960 580 1110 450 1280 550 1430 400 1600 520V760H0Z" fill="url(#mtnNear)"/>
+          <path d="M0 620 210 500 380 580 540 480 720 600 880 500 1060 610 1220 510 1390 590 1600 500V800H0Z" fill="url(#hillsFar)" opacity=".9"/>
+        </g>
+        <g class="castle-group" transform="translate(988 430)">
+          <ellipse cx="80" cy="300" rx="380" ry="54" fill="#0b100c" opacity=".4"/>
+          <path d="M-260 320q40-90 120-100 54-8 95 22 55-55 136-28 54 18 82 66 60-30 109 15 57-7 103 35l44 24H-260Z" fill="#28312a"/>
+          <path d="M-190 308h552v45H-190z" fill="#3c3a31"/>
+          <g class="castle-wall">
+            <path d="M-112 300V205h54v-20h20v20h38v-20h20v20h38v-20h20v20h54v95Z" fill="url(#castleStone)" stroke="#252620" stroke-width="3"/>
+            <path d="M-95 214v80M-45 214v80M6 214v80M55 214v80M104 214v80" stroke="#5a574d" stroke-width="2" opacity=".5"/>
+          </g>
+          <g class="castle-keep">
+            <path d="M-38 300V96h168v204Z" fill="url(#castleStone)" stroke="#232420" stroke-width="3"/>
+            <path d="M-38 96V59h20v22h23V59h20v22h23V59h20v22h23V59h20v22h19v15Z" fill="#6b6558"/>
+            <path d="M-54 101h200V84h-200z" fill="#4b483f"/>
+            <path d="M-20 106v194M40 106v194M98 106v194" stroke="#555247" stroke-width="2" opacity=".45"/>
+            <path d="M-58 300V156h48v144Z" fill="#3b3933" stroke="#24241f" stroke-width="3"/>
+            <path d="M148 300V156h48v144Z" fill="#3b3933" stroke="#24241f" stroke-width="3"/>
+            <path d="M-58 156v-16h4v-12h10v12h6v-12h10v12h6v-12h10v12h2v16ZM148 156v-16h4v-12h10v12h6v-12h10v12h6v-12h10v12h2v16Z" fill="#625d50"/>
+          </g>
+          <g class="towers">
+            <path d="M-244 300V174h56v126Z" fill="url(#castleStone)" stroke="#23241f" stroke-width="3"/>
+            <path d="M-251 174v-20h10v-10h12v10h8v-10h12v10h8v-10h12v10h8v20Z" fill="url(#castleRoof)"/>
+            <path d="M-244 167  -216 135 -188 167Z" fill="#423d37" stroke="#262521" stroke-width="2"/>
+            <path d="M-216 135v-28h32v28Z" fill="url(#castleStone)"/>
+            <path d="M-224 107 -216 88 -208 107Z" fill="#4a443d"/>
+            <path d="M118 300V174h256v126Z" fill="url(#castleStone)" stroke="#23241f" stroke-width="3"/>
+            <path d="M111 174v-20h10v-10h12v10h8v-10h12v10h8v-10h12v10h8v20Z" fill="url(#castleRoof)"/>
+            <path d="M118 167  246 128 374 167Z" fill="#423d37" stroke="#262521" stroke-width="2"/>
+            <path d="M246 128V92h34v36Z" fill="url(#castleStone)"/>
+            <path d="M236 92  246 72 256 92Z" fill="#4a443d"/>
+            <path d="M128 184h236v22H128z" fill="#47443b" opacity=".6"/>
+          </g>
+          <g class="gatehouse">
+            <path d="M74 300v-60h72v60Z" fill="#4d4a41" stroke="#23231f" stroke-width="2"/>
+            <path d="M87 300v-38a23 23 0 0 1 46 0v38Z" fill="#171915"/>
+            <path d="M96 300v-30a14 14 0 0 1 28 0v30Z" fill="#0d0f0c"/>
+            <path d="M85 260h50" stroke="#2c2b26" stroke-width="5"/>
+            <path d="M110 300v-45M94 300v-45M126 300v-45" stroke="#26251f" stroke-width="1.4"/>
+          </g>
+          <g class="windows">
+            <rect x="-12" y="138" width="18" height="30" rx="9" fill="url(#windowGlow)"/>
+            <rect x="72" y="138" width="18" height="30" rx="9" fill="url(#windowGlow)"/>
+            <rect x="28" y="214" width="16" height="26" rx="8" fill="url(#windowGlow)"/>
+            <rect x="80" y="214" width="16" height="26" rx="8" fill="url(#windowGlow)"/>
+            <rect x="-232" y="214" width="12" height="20" rx="6" fill="#e7b45f"/>
+            <rect x="148" y="223" width="12" height="20" rx="6" fill="#e7b45f"/>
+            <rect x="296" y="214" width="12" height="20" rx="6" fill="#e7b45f"/>
+          </g>
+          <g class="flags">
+            <path d="M-216 110v-72" stroke="#302d27" stroke-width="3"/>
+            <path class="flag flag-a" d="M-216 39h58l-13 13 13 13h-58Z" fill="#7c2d2b" stroke="#d1b36a" stroke-width="2"/>
+            <path d="M247 73V6" stroke="#302d27" stroke-width="3"/>
+            <path class="flag flag-b" d="M247 7h70l-16 16 16 16h-70Z" fill="#2f4f64" stroke="#d6bd7b" stroke-width="2"/>
+            <path d="M-244 166v-38" stroke="#302d27" stroke-width="2"/>
+            <path class="flag flag-c" d="M-244 128h32l-7 8 7 8h-32Z" fill="#7c2d2b" stroke="#c9aa64" stroke-width="1.5"/>
+          </g>
+          <g class="banners">
+            <path d="M-360 300v-120q24-18 48 0v120" fill="#6c2926" stroke="#cab071" stroke-width="2"/>
+            <path d="M-336 205v64M-350 231h28M-341 220l10 22M-331 220l-10 22" stroke="#d6bd7b" stroke-width="2"/>
+            <path d="M392 302v-96q21-15 42 0v96" fill="#274658" stroke="#cab071" stroke-width="2"/>
+            <circle cx="413" cy="232" r="14" fill="none" stroke="#d6bd7b" stroke-width="2"/>
+            <path d="M413 220v24M401 232h24" stroke="#d6bd7b" stroke-width="2"/>
+          </g>
+        </g>
+        <g class="village-lights">
+          <circle cx="540" cy="678" r="2.5" fill="#dfa74e" opacity=".7"/><circle cx="610" cy="700" r="2" fill="#e4b05a" opacity=".6"/><circle cx="470" cy="708" r="1.8" fill="#c88e44" opacity=".55"/><circle cx="1320" cy="640" r="2" fill="#dfa74e" opacity=".5"/>
+        </g>
+        <g class="forest-silhouettes" fill="#19231c">
+          <path d="M0 900V650l40-30 20 34 34-60 30 44 20-18 30 60 20-14 26 50 30-32 24 60 22-20 18 56H0Z"/>
+          <path d="M1600 900V660l-36-24-22 36-30-58-32 46-18-20-28 58-24-18-24 52-20-20-28 62-18-18-20 50h300Z"/>
+          <path d="M120 900v-90l26-22 14 22 22-38 18 28 14-10 20 44 16-14 18 34 16-12v58Z"/>
+          <path d="M1460 900v-88l-24-18-12 22-20-36-18 30-14-12-20 42-16-12-16 34-14-10v48Z"/>
+        </g>
+        <g opacity=".38" filter="url(#mistBlur)" fill="#d3c9aa">
+          <ellipse cx="460" cy="560" rx="310" ry="30"/>
+          <ellipse cx="1150" cy="620" rx="380" ry="24"/>
+          <ellipse cx="820" cy="700" rx="460" ry="26"/>
+        </g>
+        <path d="M0 720q120-60 250-35 180 30 295-18 125-50 300-20 220 36 420-18 150-24 335 32v239H0Z" fill="url(#foreground)"/>
+        <path d="M0 820q200-50 390-20 135 22 260-8 260-58 520 2 220 50 430-6v112H0Z" fill="#0b100d"/>
+        <path d="M692 900q68-58 177-74 92-13 220 40l14 34Z" fill="#272b20" opacity=".8"/>
+        <path d="M855 900q34-40 92-50 44-8 96 25l26 25Z" fill="#3f3a2d" opacity=".3"/>
+      </svg>
+      <div class="scene-mist mist-a"></div>
+      <div class="scene-mist mist-b"></div>
+      <div class="scene-vignette"></div>
+      <div class="scene-grain"></div>
+      <div class="scene-embers"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="menu-overlay">
+      <div class="menu-brand">
+        <div class="eyebrow"><span class="line"></span>ANNO DOMINI · 王国纪元<span class="line"></span></div>
+        <h1 class="game-title"><span>WAR</span><em>WORLD</em></h1>
+        <div class="game-title-cn">战争世界</div>
+        <div class="title-ornament"><span></span><i>✦</i><span></span></div>
+        <p class="tagline">在漫长的年代里，以一村之火，铸万世之冠。</p>
+        <p class="menu-description">资源、内政、外交与战争交织成一部属于你的中世纪编年史。世界辽阔，时间是唯一的敌人。</p>
+        <div class="menu-buttons">
+          <button class="royal-btn primary nowrap" id="btn-new-game"><span class="btn-glyph">✦</span>开始新游戏</button>
+          <button class="royal-btn hidden nowrap" id="btn-continue-game"><span class="btn-glyph">❧</span>继续统治</button>
+          <div class="menu-row">
+            <button class="royal-btn slim" id="btn-menu-help">王国法典</button>
+            <button class="royal-btn slim" id="btn-menu-settings">设置</button>
+          </div>
+          <button class="text-btn hidden" id="btn-menu-load">读取最近存档</button>
+        </div>
+        <div class="menu-footer">
+          <span>离线单机</span><span class="sep">·</span><span>长期战略</span><span class="sep">·</span><span id="menu-version">编年史 I</span>
+        </div>
+      </div>
+      <div class="menu-aside">
+        <div class="menu-quote">“王冠的重量，<br>只有戴上它的人知道。”</div>
+        <div class="menu-seal"><span>W</span></div>
+      </div>
+    </div>
+  </main>
+
+  <section id="setup-screen" class="screen setup-screen hidden">
+    <div class="setup-backdrop"></div>
+    <div class="setup-wrap">
+      <header class="setup-head">
+        <div>
+          <div class="eyebrow">FOUND YOUR DYNASTY · 奠基</div>
+          <h2>建立你的王朝</h2>
+          <p>你的选择将决定这片大陆的命运。世界会自动生成，每一次都是独一无二的。</p>
+        </div>
+        <button class="close-btn" id="setup-close" title="返回"><svg><use href="#ico-close"></use></svg></button>
+      </header>
+      <div class="setup-body">
+        <div class="setup-column identity-column">
+          <div class="section-label">王朝徽记</div>
+          <div class="crest-preview">
+            <canvas id="setup-crest" width="150" height="172"></canvas>
+            <button class="mini-btn" id="reroll-crest" title="重新生成">重新生成</button>
+          </div>
+          <label class="field-label" for="player-name">王朝与阵营之名</label>
+          <div class="name-input-row">
+            <input id="player-name" maxlength="16" placeholder="例如：英格兰" autocomplete="off">
+            <button class="mini-btn" id="random-name">随机</button>
+          </div>
+          <p class="field-help">你的称呼会随着最高定居点阶段变为伯国、公国、王国或帝国。</p>
+          <div class="setup-divider"></div>
+          <div class="world-hint">
+            <div class="hint-icon">✦</div>
+            <div><strong>五名居民</strong><p>你将与五名居民一同开始。人口、粮食与木材是最初的生命线。</p></div>
+          </div>
+          <div class="world-hint">
+            <div class="hint-icon">⚔</div>
+            <div><strong>漫长的年代</strong><p>游戏节奏缓慢。你可以随时暂停或加速时间，让王国按你的意志生长。</p></div>
+          </div>
+        </div>
+
+        <div class="setup-column options-column">
+          <div class="setup-group">
+            <div class="section-label">世界之幅</div>
+            <div class="choice-grid map-choice" id="map-size-options">
+              <button class="choice-card" data-value="broad"><strong>广袤</strong><span>160 × 120</span><small>适合初次游玩</small></button>
+              <button class="choice-card active" data-value="vast"><strong>辽阔</strong><span>224 × 164</span><small>推荐 · 完整世界</small></button>
+              <button class="choice-card" data-value="endless"><strong>无垠</strong><span>300 × 214</span><small>漫长史诗</small></button>
+            </div>
+          </div>
+          <div class="setup-row">
+            <div class="setup-group half">
+              <div class="section-label">群雄数量</div>
+              <div class="range-wrap">
+                <input type="range" id="ai-count" min="2" max="7" step="1" value="4">
+                <div class="range-value"><span id="ai-count-value">4</span> 个 AI 阵营</div>
+              </div>
+            </div>
+            <div class="setup-group half">
+              <div class="section-label">地图种子 <span class="muted">（可选）</span></div>
+              <input id="map-seed" class="seed-input" maxlength="24" placeholder="留空即随机">
+            </div>
+          </div>
+          <div class="setup-group">
+            <div class="section-label">AI 难度</div>
+            <div class="difficulty-grid" id="difficulty-options">
+              <button class="difficulty-card" data-value="easy"><span class="diff-mark">Ⅰ</span><strong>侍从</strong><small>简单 · 缓慢而宽容</small></button>
+              <button class="difficulty-card active" data-value="normal"><span class="diff-mark">Ⅱ</span><strong>骑士</strong><small>普通 · 可信的对手</small></button>
+              <button class="difficulty-card" data-value="hard"><span class="diff-mark">Ⅲ</span><strong>男爵</strong><small>困难 · 锐意扩张</small></button>
+              <button class="difficulty-card" data-value="legendary"><span class="diff-mark">Ⅳ</span><strong>国王</strong><small>传奇 · 无情的王座</small></button>
+            </div>
+          </div>
+          <div class="setup-group options-bottom">
+            <label class="toggle-line"><input type="checkbox" id="tutorial-toggle" checked><span class="checkmark"></span><span>显示王室谕令与新手引导</span></label>
+            <div class="setup-note"><svg><use href="#ico-help"></use></svg><span>旧时代的规则可以在「王国法典」中随时查阅。</span></div>
+          </div>
+        </div>
+      </div>
+      <footer class="setup-footer">
+        <button class="royal-btn ghost" id="setup-back">返回</button>
+        <div class="setup-footer-note">你的故事将被写入编年史</div>
+        <button class="royal-btn primary wide" id="setup-start"><span class="btn-glyph">✦</span>开始统治</button>
+      </footer>
+    </div>
+  </section>
+
+  <div id="loading-screen" class="loading-screen hidden">
+    <div class="loading-panel">
+      <div class="loading-emblem">W</div>
+      <h3>正在绘制世界</h3>
+      <p id="loading-text">山河成形，列国就位……</p>
+      <div class="loading-track"><i id="loading-progress"></i></div>
+      <small>首次进入需要一点时间。世界将保存在你的浏览器中。</small>
+    </div>
+  </div>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div id="modal" class="modal" role="dialog" aria-modal="true"></div>
+  </div>
+  <div id="subdialog-backdrop" class="subdialog-backdrop hidden"></div>
+  <div id="prompt-layer" class="prompt-layer hidden"></div>
+  <div id="tutorial-toast-layer" class="tutorial-toast-layer"></div>
+  <div id="tooltip" class="tooltip hidden"></div>
+  <div id="gameover-screen" class="gameover-screen hidden"></div>
+
+  <div id="boot-fallback" class="boot-fallback hidden">
+    <div class="loading-panel"><h3>无法启动战争世界</h3><p>请使用支持 Canvas 的现代浏览器，并确认所有游戏文件都在同一目录。</p></div>
+  </div>
+
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mapgen.js"></script>
+  <script src="js/pathfinding.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/game_actions.js"></script>
+  <script src="js/game_sim.js"></script>
+  <script src="js/game_war.js"></script>
+  <script src="js/game_diplomacy.js"></script>
+  <script src="js/game_ai.js"></script>
+  <script src="js/game_ui_api.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/ui_pages.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

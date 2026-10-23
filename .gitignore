@@ -1,0 +1,12 @@
+# Runtime dependencies are never needed to play the game.
+node_modules/
+
+# Local browser-test artifacts and screenshots.
+test/
+package.json
+package-lock.json
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
