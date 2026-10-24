@@ -9,13 +9,15 @@
   <title>战争世界</title>
   <script>
     // Scale the whole interface with the viewport instead of keeping tiny fixed px text.
-    // 1600x900 is the reference layout; larger displays get a proportional UI (capped at 2x).
+    // 1600x900 is the reference layout; above that the UI grows on a gentle power
+    // curve so 1920/2560/4K displays all stay comfortably readable (capped at 1.8x).
     (function () {
       var root = document.documentElement;
-      var REF_W = 1600, REF_H = 900, MAX_SCALE = 2;
+      var REF_W = 1600, REF_H = 900, MAX_SCALE = 1.8;
       function fitUi() {
-        var scale = Math.min(window.innerWidth / REF_W, window.innerHeight / REF_H);
-        scale = Math.max(1, Math.min(MAX_SCALE, scale));
+        var raw = Math.min(window.innerWidth / REF_W, window.innerHeight / REF_H);
+        var scale = raw <= 1 ? 1 : Math.pow(raw, 1.5);
+        scale = Math.min(MAX_SCALE, scale);
         window.__WW_UI_SCALE = scale;
         root.style.fontSize = (16 * scale) + 'px';
       }
