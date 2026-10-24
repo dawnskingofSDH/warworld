@@ -7,6 +7,23 @@
   <meta name="description" content="战争世界（Warworld）Demo 0.3：一部完全离线的 2D 中世纪大战略游戏，浏览器直接开玩。">
   <meta name="application-name" content="战争世界">
   <title>战争世界</title>
+  <script>
+    // Scale the whole interface with the viewport instead of keeping tiny fixed px text.
+    // 1600x900 is the reference layout; larger displays get a proportional UI (capped at 2x).
+    (function () {
+      var root = document.documentElement;
+      var REF_W = 1600, REF_H = 900, MAX_SCALE = 2;
+      function fitUi() {
+        var scale = Math.min(window.innerWidth / REF_W, window.innerHeight / REF_H);
+        scale = Math.max(1, Math.min(MAX_SCALE, scale));
+        window.__WW_UI_SCALE = scale;
+        root.style.fontSize = (16 * scale) + 'px';
+      }
+      fitUi();
+      window.addEventListener('resize', fitUi, { passive: true });
+      window.addEventListener('orientationchange', fitUi);
+    })();
+  </script>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/main.css">
 </head>

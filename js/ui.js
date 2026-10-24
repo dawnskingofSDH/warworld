@@ -334,7 +334,7 @@
     toastTutorial(title, text) {
       const div = document.createElement('div');
       div.className = 'tutorial-toast';
-      div.innerHTML = `<div class="eyebrow">ROYAL COMMISSION · 王室谕令</div><h4 style="margin:8px 0 5px;font-family:var(--font-title);font-weight:400;font-size:20px;letter-spacing:.08em;">${esc(title)}</h4><p style="margin:0;font-size:12px;line-height:1.7;color:rgba(75,60,38,.7)">${esc(text || '')}</p>`;
+      div.innerHTML = `<div class="eyebrow">ROYAL COMMISSION · 王室谕令</div><h4 style="margin:0.5rem 0 0.3125rem;font-family:var(--font-title);font-weight:400;font-size:1.25rem;letter-spacing:.08em;">${esc(title)}</h4><p style="margin:0;font-size:0.75rem;line-height:1.7;color:rgba(75,60,38,.7)">${esc(text || '')}</p>`;
       this.refs.tutorialToast.appendChild(div);
       setTimeout(() => { div.style.transition = 'opacity .6s'; div.style.opacity = '0'; setTimeout(() => div.remove(), 650); }, 5200);
     }
@@ -795,7 +795,7 @@
           <div class="u-hp"><i style="width:${pct}%"></i></div>
         </div>`;
       }).join('');
-      if (units.length > shown.length) html += `<div class="unit-card"><div class="u-kind" style="margin-top:6px">还有 ${units.length - shown.length} 个单位</div></div>`;
+      if (units.length > shown.length) html += `<div class="unit-card"><div class="u-kind" style="margin-top:0.375rem">还有 ${units.length - shown.length} 个单位</div></div>`;
       this.refs.selectionCards.innerHTML = html;
       $$('[data-unit-portrait]', this.refs.selectionCards).forEach((cv) => {
         const u = g.getUnit(cv.dataset.unitPortrait);
@@ -911,7 +911,7 @@
         body += `<div class="meter-row"><div class="meter-label"><span>${b.converting ? '改建进度' : b.upgrade ? '升级进度' : '建造进度'}</span><span>${Math.floor(pct * 100)}% · ${(b.constructors || []).length} 名工匠</span></div><div class="meter"><i style="width:${pct * 100}%"></i></div></div>`;
         if (isOwner) body += `<div class="action-row"><button class="action-btn" data-act="add-constructor">${icon('hammer')}派遣空闲工匠</button></div>`;
       }
-      body += `<p class="description" style="margin-top:10px">${esc(b.def.desc)}</p>`;
+      body += `<p class="description" style="margin-top:0.625rem">${esc(b.def.desc)}</p>`;
       if (b.def.effect) body += `<div class="effect-line">${esc(b.def.effect)}</div>`;
       if (b.complete && !b.dead) {
         const prod = g.getBuildingProductionInfo(b);
@@ -1039,7 +1039,7 @@
         <div class="meter-row"><div class="meter-label"><span>储量</span><span>${Math.round(U.clamp(node.amount / node.max, 0, 1) * 100)}%</span></div><div class="meter"><i style="width:${U.clamp(node.amount / node.max, 0, 1) * 100}%"></i></div></div>
         <div class="stat-line"><span class="k">每日再生</span><span class="v">${U.round(info.regen, 1)}</span></div>
         <div class="stat-line"><span class="k">附近采集加速</span><span class="v ${info.boost > 1 ? 'good' : ''}">${info.boost > 1 ? '×' + info.boost.toFixed(2) : '无'}</span></div>
-        <p class="description" style="margin-top:10px">${esc(meta.desc)}</p>`;
+        <p class="description" style="margin-top:0.625rem">${esc(meta.desc)}</p>`;
       if (!isGatherable) body += `<div class="effect-line">该矿脉无法被直接采集。你可以在附近建造相应的矿场，并派遣居民进入矿场开采。</div>`;
       if (node.clearing) {
         const pct = node.clearing.required ? U.clamp(node.clearing.progress / node.clearing.required, 0, 1) : 0;
@@ -1058,7 +1058,7 @@
       body += `</div>
         <div class="action-row"><button class="action-btn" data-act="focus-node">定位到地图</button><button class="action-btn" data-act="close-drawer">关闭</button></div>
       </div>`;
-      const html = `<div class="drawer-head"><div class="drawer-icon" style="font-size:26px;color:#6f7d4d">${resIcon(meta.resource, 34)}</div><div class="drawer-title-wrap"><h3>${esc(meta.name)}</h3><div class="drawer-sub"><span>自然资源点</span><span class="sep">·</span><span>${esc(D.RES[meta.resource].name)}</span></div></div><button class="close-btn" data-act="close-drawer">${icon('close')}</button></div>${body}`;
+      const html = `<div class="drawer-head"><div class="drawer-icon" style="font-size:1.625rem;color:#6f7d4d">${resIcon(meta.resource, 34)}</div><div class="drawer-title-wrap"><h3>${esc(meta.name)}</h3><div class="drawer-sub"><span>自然资源点</span><span class="sep">·</span><span>${esc(D.RES[meta.resource].name)}</span></div></div><button class="close-btn" data-act="close-drawer">${icon('close')}</button></div>${body}`;
       this.openDrawer(html);
     }
 
@@ -1132,7 +1132,7 @@
         if (u.kind === 'resident') body += `<button class="action-btn" data-act="unit-builder">转为建筑工</button>`;
         if (u.def.military) body += `<button class="action-btn" data-act="unit-clinic">进入最近诊所</button>`;
         body += `<button class="action-btn danger" data-act="unit-disband">遣散单位</button>`;
-        body += `</div><div class="nearby-note" style="margin-top:6px">遣散会让单位永久离开并释放人口。<br>右键地上移动，右键目标下达采集、建造、进入或攻击命令。</div></div>`;
+        body += `</div><div class="nearby-note" style="margin-top:0.375rem">遣散会让单位永久离开并释放人口。<br>右键地上移动，右键目标下达采集、建造、进入或攻击命令。</div></div>`;
       }
       body += `<div class="action-row"><button class="action-btn" data-act="close-drawer">关闭</button></div></div>`;
       const html = `<div class="drawer-head"><div class="drawer-icon" style="border:0;background:transparent"><canvas width="92" height="70" data-unit-portrait></canvas></div>
@@ -1415,7 +1415,7 @@
           crownCard = `<div class="build-crown-card">
             <div class="crown-art"><canvas width="180" height="132" data-build-icon="hall"></canvas></div>
             <div class="crown-copy">
-              <div class="eyebrow" style="font-size:8px;color:rgba(88,68,38,.5);letter-spacing:.16em">SEAT OF POWER</div>
+              <div class="eyebrow" style="font-size:0.5rem;color:rgba(88,68,38,.5);letter-spacing:.16em">SEAT OF POWER</div>
               <h4>${D.buildingName(hall.def, hall.level)}</h4>
               <p>${s.name}的核心。升级大厅可提升定居点阶段，并解锁新的建筑与制度；升级费用约为新建同级大厅的 ${Math.round(D.UPGRADE_COST_RATIO * 100)}%。</p>
               ${up.ok ? `<div class="crown-cost">${this.costHtml(up.cost, s)}</div><div class="crown-actions"><button class="mini-btn" data-build-hall-select>查看大厅</button><button class="mini-btn primary-ish" data-build-hall-upgrade>升级 · ${up.days} 人·日</button></div>` : `<div class="crown-note">${esc(up.error)}${up.cost ? ' · ' + this.costHtml(up.cost, s) : ''}</div><div class="crown-actions"><button class="mini-btn" data-build-hall-select>查看大厅</button></div>`}

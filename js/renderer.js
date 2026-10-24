@@ -31,6 +31,10 @@
     ctx.closePath();
   }
 
+  // Interface text also grows on high-resolution displays; the head script
+  // writes this factor before the first frame and refreshes it on resize.
+  function uiScale() { return window.__WW_UI_SCALE || 1; }
+
   const LEVEL_PALETTE = [
     null,
     { wall: '#8b6a49', wallDark: '#5d442d', roof: '#a38151', roofDark: '#6c5032', trim: '#d0b477', stone: '#8a8171' },
@@ -1132,11 +1136,12 @@
         ctx.fillStyle = '#c89b58'; rrect(ctx, -14, 12, 28 * prog, 4, 2); ctx.fill();
       }
       if (sel) {
+        const ui = uiScale();
         ctx.fillStyle = 'rgba(22,18,12,0.84)';
-        rrect(ctx, -27, -25, 54, 10, 3); ctx.fill();
+        rrect(ctx, -27 * ui, -25 * ui, 54 * ui, 10 * ui, 3 * ui); ctx.fill();
         ctx.strokeStyle = 'rgba(213,186,117,0.65)'; ctx.lineWidth = 0.8; ctx.stroke();
-        ctx.fillStyle = '#e8d8a9'; ctx.font = '6px Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(D.NODES[n.type].name + ' ' + Math.floor(n.amount) + '/' + n.max, 0, -20);
+        ctx.fillStyle = '#e8d8a9'; ctx.font = `${6 * ui}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(D.NODES[n.type].name + ' ' + Math.floor(n.amount) + '/' + n.max, 0, -20 * ui);
       }
       ctx.restore();
     }
@@ -1332,7 +1337,7 @@
         this._bar(ctx, bx, by, barW, hh, progress, 'rgba(20,15,10,0.8)', '#d2b56f');
         if (this.game.camera && this.game.camera.zoom > 0.7 || this.camera.zoom > 0.7) {
           ctx.fillStyle = 'rgba(244,231,196,0.9)';
-          ctx.font = `${Math.max(7, 9 * this.camera.zoom)}px Georgia, "SimSun", serif`;
+          ctx.font = `${Math.max(7, 9 * this.camera.zoom) * uiScale()}px Georgia, "SimSun", serif`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
           ctx.fillText(Math.floor(progress * 100) + '%', w / 2, by + hh + 2);
         }
@@ -1361,10 +1366,11 @@
       if (!s || this.camera.zoom < 0.62) return;
       const ctx = this.ctx;
       const text = s.name;
-      ctx.font = `600 ${Math.max(9, 11 * this.camera.zoom)}px "KaiTi", "STKaiti", Georgia, serif`;
+      const ui = uiScale();
+      ctx.font = `600 ${Math.max(9, 11 * this.camera.zoom) * ui}px "KaiTi", "STKaiti", Georgia, serif`;
       const tw = ctx.measureText(text).width;
-      const bw = tw + 18, bh = Math.max(14, 17 * this.camera.zoom);
-      const bx = w / 2 - bw / 2, by = -bh - 17;
+      const bw = tw + 18 * ui, bh = Math.max(14, 17 * this.camera.zoom) * ui;
+      const bx = w / 2 - bw / 2, by = -bh - 17 * ui;
       ctx.fillStyle = 'rgba(18,15,10,0.74)';
       rrect(ctx, bx, by, bw, bh, 2); ctx.fill();
       ctx.strokeStyle = U.rgba(faction ? faction.colors.secondary : '#cbb575', 0.7); ctx.lineWidth = 0.8; ctx.stroke();
@@ -2329,7 +2335,7 @@
       }
       if (u.def.military && isSelected) {
         ctx.fillStyle = '#e5d5a8';
-        ctx.font = `${Math.max(6, 7.5 * this.camera.zoom)}px "KaiTi", Georgia, serif`;
+        ctx.font = `${Math.max(6, 7.5 * this.camera.zoom) * uiScale()}px "KaiTi", Georgia, serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
         ctx.fillText(u.def.name, 0, -t * 0.72);
       }
@@ -2578,6 +2584,7 @@
       const z = TILE * this.camera.zoom;
       ctx.save();
       if (pl.mode === 'found') {
+        const ui = uiScale();
         const p = this.worldToScreen(pl.x - 1, pl.y - 1);
         ctx.fillStyle = pl.valid ? 'rgba(123,167,94,0.3)' : 'rgba(169,72,58,0.3)';
         ctx.fillRect(p.x, p.y, 3 * z, 3 * z);
@@ -2585,10 +2592,10 @@
         ctx.strokeRect(p.x, p.y, 3 * z, 3 * z);
         this._drawGhostBuilding('hall', p.x, p.y, 3, 2, z, pl.valid);
         ctx.fillStyle = 'rgba(19,16,12,0.78)';
-        ctx.fillRect(p.x - 2, p.y - 20, 124, 16);
+        ctx.fillRect(p.x - 2 * ui, p.y - 20 * ui, 124 * ui, 16 * ui);
         ctx.fillStyle = pl.valid ? '#e7d9a6' : '#e3a08e';
-        ctx.font = '10px "SimSun", Georgia, serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-        ctx.fillText(pl.valid ? '建立新定居点' : pl.error || '此处不可建立', p.x + 2, p.y - 12);
+        ctx.font = `${10 * ui}px "SimSun", Georgia, serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        ctx.fillText(pl.valid ? '建立新定居点' : pl.error || '此处不可建立', p.x + 2 * ui, p.y - 12 * ui);
       } else if (pl.tiles && pl.tiles.length) {
         for (const t of pl.tiles) {
           const p = this.worldToScreen(t.x, t.y);
@@ -2600,10 +2607,11 @@
         }
         const first = pl.tiles[0];
         if (first) {
+          const ui = uiScale();
           const p = this.worldToScreen(first.x, first.y);
-          ctx.fillStyle = 'rgba(20,16,11,0.8)'; ctx.fillRect(p.x, p.y - 19, 94, 16);
-          ctx.fillStyle = '#efe0b2'; ctx.font = '10px "SimSun", Georgia, serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-          ctx.fillText(`${pl.defName || ''} · ${pl.tiles.length} 格`, p.x + 3, p.y - 11);
+          ctx.fillStyle = 'rgba(20,16,11,0.8)'; ctx.fillRect(p.x, p.y - 19 * ui, 94 * ui, 16 * ui);
+          ctx.fillStyle = '#efe0b2'; ctx.font = `${10 * ui}px "SimSun", Georgia, serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText(`${pl.defName || ''} · ${pl.tiles.length} 格`, p.x + 3 * ui, p.y - 11 * ui);
         }
       } else {
         const x = pl.x, y = pl.y;

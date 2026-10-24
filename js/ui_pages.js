@@ -43,13 +43,13 @@
     const body = `<div class="section">
       <div class="section-title">王室谕令</div>
       <p class="panel-subtitle">这些目标会引导你建立稳固的根基。它们不是强制任务，但完成全部谕令意味着你已经掌握了这个世界的法则。时间在翻阅书页时暂停。</p>
-      <div class="summary-grid" style="margin-bottom:14px">
-        <div class="summary-cell"><div class="sc-label">已完成</div><div class="sc-value">${state.completed}<small style="font-size:11px;color:rgba(87,69,43,.45)"> / ${state.total}</small></div><div class="sc-note">王室的认可</div></div>
-        <div class="summary-cell"><div class="sc-label">当前阶段</div><div class="sc-value" style="font-size:16px">${D.STAGE_NAMES[this.game.player.rank] || '流亡'}</div><div class="sc-note">${D.RANK_NAMES[this.game.player.rank] || '无地'}</div></div>
-        <div class="summary-cell"><div class="sc-label">人口</div><div class="sc-value">${this.game.livingPopulation(this.game.playerFactionId)}<small style="font-size:11px;color:rgba(87,69,43,.45)"> / ${this.game.factionPopCap(this.game.playerFactionId)}</small></div><div class="sc-note">臣民与士兵</div></div>
+      <div class="summary-grid" style="margin-bottom:0.875rem">
+        <div class="summary-cell"><div class="sc-label">已完成</div><div class="sc-value">${state.completed}<small style="font-size:0.6875rem;color:rgba(87,69,43,.45)"> / ${state.total}</small></div><div class="sc-note">王室的认可</div></div>
+        <div class="summary-cell"><div class="sc-label">当前阶段</div><div class="sc-value" style="font-size:1rem">${D.STAGE_NAMES[this.game.player.rank] || '流亡'}</div><div class="sc-note">${D.RANK_NAMES[this.game.player.rank] || '无地'}</div></div>
+        <div class="summary-cell"><div class="sc-label">人口</div><div class="sc-value">${this.game.livingPopulation(this.game.playerFactionId)}<small style="font-size:0.6875rem;color:rgba(87,69,43,.45)"> / ${this.game.factionPopCap(this.game.playerFactionId)}</small></div><div class="sc-note">臣民与士兵</div></div>
         <div class="summary-cell"><div class="sc-label">定居点</div><div class="sc-value">${this.game.ownedSettlements(this.game.playerFactionId).length}</div><div class="sc-note">你的领地</div></div>
       </div>
-      ${state.list.map((o, i) => `<div class="list-item ${o.done ? 'active' : ''}" style="cursor:default;margin-bottom:4px">
+      ${state.list.map((o, i) => `<div class="list-item ${o.done ? 'active' : ''}" style="cursor:default;margin-bottom:0.25rem">
         <div class="li-icon" style="color:${o.done ? '#557247' : 'rgba(86,67,40,.4)'}">${o.done ? icon('check') : U.cnNum(i + 1)}</div>
         <div class="li-main"><div class="li-name" style="${o.done ? 'color:#536a48;' : ''}">${esc(o.title)}</div><div class="li-sub">${esc(o.hint)}</div></div>
         <span class="li-badge">${o.done ? '完成' : '待办'}</span>
@@ -110,7 +110,7 @@
       const v = active.resources[k] || 0;
       const cap = caps[k] || 1;
       const pct = U.clamp(v / cap, 0, 1);
-      return `<div class="resource-cell ${pct > .9 ? 'near-full' : ''}"><div class="rc-top"><span class="rc-label">${resIcon(k, 12)}${D.RES[k].name}</span><span class="rc-value">${fmt(v)}<span style="opacity:.4;font-size:10px">/${fmt(cap)}</span></span></div><div class="rc-bar"><i style="width:${pct * 100}%"></i></div></div>`;
+      return `<div class="resource-cell ${pct > .9 ? 'near-full' : ''}"><div class="rc-top"><span class="rc-label">${resIcon(k, 12)}${D.RES[k].name}</span><span class="rc-value">${fmt(v)}<span style="opacity:.4;font-size:0.625rem">/${fmt(cap)}</span></span></div><div class="rc-bar"><i style="width:${pct * 100}%"></i></div></div>`;
     }).join('');
     const upkeepItems = Object.keys(upkeep).length ? Object.entries(upkeep).map(([k, v]) => {
       const enough = (active.resources[k] || 0) >= v;
@@ -132,7 +132,7 @@
         ${listHtml}
         <div class="gold-divider"></div>
         <button class="action-btn primary" style="width:100%" data-act="internal-build">${icon('build')}打开建造面板</button>
-        <div style="height:5px"></div>
+        <div style="height:0.3125rem"></div>
         <button class="action-btn" style="width:100%" data-act="internal-colonize">${icon('flag')}建立新的定居点</button>
         <div class="cooldown-note">需 ${Object.entries(g.COLONY_COST).map(([k, v]) => v + ' ' + D.RES[k].name).join('、')}，以及 3 个空余人口。当前空余人口 ${freePop}${!colonyAffordable ? ' · 资源不足' : !colonyPopOk ? ' · 人口容量不足' : ''}</div>
       </aside>
@@ -143,16 +143,16 @@
         </div>
         <div class="stage-path">${[1, 2, 3, 4].map((lvl) => `<div class="stage-step ${active.stage === lvl ? 'current' : active.stage > lvl ? 'done' : ''}"><strong>${D.STAGE_NAMES[lvl]}</strong><small>${['', '村庄大厅', '镇长大厅', '市政厅', '王宫'][lvl]}</small></div>`).join('')}</div>
         <div class="summary-grid">
-          <div class="summary-cell"><div class="sc-label">人口（全阵营）</div><div class="sc-value">${pop}<small style="font-size:11px;opacity:.45"> / ${popCap}</small></div><div class="sc-note">居民与士兵均占用人口</div></div>
+          <div class="summary-cell"><div class="sc-label">人口（全阵营）</div><div class="sc-value">${pop}<small style="font-size:0.6875rem;opacity:.45"> / ${popCap}</small></div><div class="sc-note">居民与士兵均占用人口</div></div>
           <div class="summary-cell"><div class="sc-label">本城建筑</div><div class="sc-value">${buildings.length}</div><div class="sc-note">${Object.keys(counts).length} 种建筑</div></div>
           <div class="summary-cell"><div class="sc-label">稳定度</div><div class="sc-value" style="color:${stability < D.INDEPENDENCE.threshold ? '#8d463b' : stability < 50 ? '#806835' : '#4e6540'}">${Math.floor(stability)}</div><div class="sc-note">目标 ${Math.round(target)}</div></div>
           <div class="summary-cell"><div class="sc-label">当前战争</div><div class="sc-value">${activeWars.length}</div><div class="sc-note">${warCount ? '战争使稳定度承压' : '和平年代'}</div></div>
         </div>
-        <div class="overview-columns" style="margin-top:16px">
+        <div class="overview-columns" style="margin-top:1rem">
           <div>
-            <div class="section-title">资源储量 <span class="muted" style="font-size:11px">仅限本城</span></div>
+            <div class="section-title">资源储量 <span class="muted" style="font-size:0.6875rem">仅限本城</span></div>
             <div class="resource-grid">${resources}</div>
-            <div class="section-title" style="margin-top:18px">稳定度</div>
+            <div class="section-title" style="margin-top:1.125rem">稳定度</div>
             <div class="stability-panel">
               <div class="stability-orb" style="--stability:${Math.floor(stability)}%"><span>${Math.floor(stability)}</span></div>
               <div class="stability-copy">
@@ -168,20 +168,20 @@
           <div>
             <div class="section-title">每日消耗</div>
             <div class="upkeep-list">${upkeepItems}</div>
-            <div class="section-title" style="margin-top:18px">人口与劳力</div>
+            <div class="section-title" style="margin-top:1.125rem">人口与劳力</div>
             <div class="population-line"><span>全阵营人口</span><div class="population-bar"><i style="width:${U.clamp(pop / Math.max(1, popCap), 0, 1) * 100}%"></i></div><span>${pop} / ${popCap}</span></div>
             <p class="nearby-note">民宅会提高人口上限，并随时间自动产生新居民。每名居民与士兵都占用 1 人口。本城民宅 ${houseCount}/${houseLimit}；升级定居点阶段可提高民宅上限。</p>
-            <div class="worker-summary" style="margin-top:8px">
+            <div class="worker-summary" style="margin-top:0.5rem">
               <span><b>${g.units.filter((u) => !u.dead && u.owner === player.id && u.kind === 'resident' && u.state === 'idle').length}</b>空闲居民</span>
               <span><b>${g.units.filter((u) => !u.dead && u.owner === player.id && u.kind === 'builder').length}</b>建筑工</span>
               <span><b>${g.units.filter((u) => !u.dead && u.owner === player.id && u.def.military).length}</b>士兵</span>
               <span><b>${houseCount}/${houseLimit}</b>民宅</span>
             </div>
-            <div class="section-title" style="margin-top:18px">稳定度构成</div>
+            <div class="section-title" style="margin-top:1.125rem">稳定度构成</div>
             ${stabilityFactors.map(([k, v]) => `<div class="stat-line"><span class="k">${esc(k)}</span><span class="v ${String(v).startsWith('−') ? 'bad' : 'good'}">${esc(v)}</span></div>`).join('')}
           </div>
         </div>
-        <div class="section-title" style="margin-top:18px">建筑一览</div>
+        <div class="section-title" style="margin-top:1.125rem">建筑一览</div>
         ${buildingIndex || '<div class="empty-state">还没有建筑。打开建造面板，从一座民宅或农田开始。</div>'}
         <div class="effect-line">提示：每座资源建筑都需要居民进入才能生产。建筑面板中的“补满工人”会自动召集本城空闲居民。</div>
       </section>
@@ -265,7 +265,7 @@
       }
       if (hasBothMarkets && !atWar) actionButtons += `<button class="action-btn" data-act="diplo-trade">${icon('coin')}商队贸易</button>`;
     }
-    const cbsHtml = cbs.length ? cbs.map((cb) => `<span class="tag red" title="宣战时可使用">${D.CAUSE_LABEL[cb.reason] || cb.reason} · 对${esc(D.realmFullName(selected))}</span>`).join('') : '<span class="muted" style="font-size:11.5px">没有针对对方的战争理由。无端宣战会损害你的声誉。</span>';
+    const cbsHtml = cbs.length ? cbs.map((cb) => `<span class="tag red" title="宣战时可使用">${D.CAUSE_LABEL[cb.reason] || cb.reason} · 对${esc(D.realmFullName(selected))}</span>`).join('') : '<span class="muted" style="font-size:0.71875rem">没有针对对方的战争理由。无端宣战会损害你的声誉。</span>';
     const warsHtml = war ? `<div class="war-panel">
       <div class="war-head"><span class="war-title">${icon('military')} 与${esc(D.realmFullName(selected))}的战争</span><span class="tag red">${D.CAUSE_LABEL[war.reason] || war.reason}</span></div>
       <div class="war-meta">开始于 ${U.dateLabel(war.started, true)} · 已持续 ${Math.floor(g.timeDays - war.started)} 天 · 双方损失 ${war.losses[player.id] || 0} / ${war.losses[selected.id] || 0} 人</div>
@@ -311,7 +311,7 @@
         <div class="stat-line"><span class="k">宗主</span><span class="v">${g.overlordOf(player.id) ? esc(g.factionLabel(g.overlordOf(player.id))) : '无'}</span></div>
         <div class="stat-line"><span class="k">战争</span><span class="v">${g.warsFor(player.id).length}</span></div>
         <div class="stat-line"><span class="k">贸易协定</span><span class="v">${activeDeals.length} 项进行中</span></div>
-        ${activeDeals.length ? `<div class="mini-title" style="margin-top:8px">进行中的商队</div>${tradeSummaryHtml}` : ''}
+        ${activeDeals.length ? `<div class="mini-title" style="margin-top:0.5rem">进行中的商队</div>${tradeSummaryHtml}` : ''}
       </aside>
       <section>
         <div class="diplo-detail-head">
@@ -321,29 +321,29 @@
             <div class="diplo-sub">${selected.eliminated ? '这个国家已经不复存在。' : `由${D.RANK_NAMES[selected.rank] || '无地者'}统治 · 定居点 ${g.ownedSettlements(selected.id).length} · 军力评估 ${Math.round(powerOther)}`}</div>
             <div class="diplo-badges">${statusBadges}</div>
           </div>
-          <div class="relation-value" style="color:${rel.color}">${Math.round(rel.value)}<div style="font-size:10.5px;color:rgba(86,69,43,.5);letter-spacing:.05em">好感</div></div>
+          <div class="relation-value" style="color:${rel.color}">${Math.round(rel.value)}<div style="font-size:0.65625rem;color:rgba(86,69,43,.5);letter-spacing:.05em">好感</div></div>
         </div>
         <div class="relation-block">
           <div style="flex:1"><div class="rel-label"><span>关系</span><span>${rel.label}</span></div><div class="relation-track"><i style="width:${rel.value}%;background:${rel.color}"></i></div></div>
-          <div style="font-size:10.5px;color:rgba(84,67,41,.5);width:120px;line-height:1.55">好感越高，越容易接受同盟、附庸与有利的贸易条件。</div>
+          <div style="font-size:0.65625rem;color:rgba(84,67,41,.5);width:7.5rem;line-height:1.55">好感越高，越容易接受同盟、附庸与有利的贸易条件。</div>
         </div>
         ${selected.eliminated ? '<div class="warning-note">这个阵营已经灭亡，无法再进行外交。</div>' : `<div class="diplo-actions">${actionButtons}</div>`}
-        <div class="split-section" style="margin-top:18px">
+        <div class="split-section" style="margin-top:1.125rem">
           <div>
             <div class="section-title">战争理由</div>
             <div class="chip-list">${cbsHtml}</div>
-            <div class="section-title" style="margin-top:16px">权力对比</div>
+            <div class="section-title" style="margin-top:1rem">权力对比</div>
             <div class="stat-line"><span class="k">你的实力</span><span class="v">${Math.round(powerSelf)}</span></div>
             <div class="stat-line"><span class="k">对方实力</span><span class="v">${Math.round(powerOther)}</span></div>
             <div class="stat-line"><span class="k">评估</span><span class="v ${powerSelf > powerOther ? 'good' : 'bad'}">${powerSelf > powerOther * 1.3 ? '你占据明显优势' : powerOther > powerSelf * 1.3 ? '对方更为强大' : '势均力敌'}</span></div>
-            <div class="section-title" style="margin-top:16px">外交状态</div>
+            <div class="section-title" style="margin-top:1rem">外交状态</div>
             ${statusInfo.join('') || '<div class="empty-note">尚无正式条约。</div>'}
           </div>
           <div>
-            <div class="section-title">贸易协定 <span class="muted" style="font-size:9.5px;letter-spacing:.05em">已签订</span></div>
+            <div class="section-title">贸易协定 <span class="muted" style="font-size:0.59375rem;letter-spacing:.05em">已签订</span></div>
             ${dealsHtml}
-            ${hasBothMarkets ? `<div class="trade-panel" style="margin-top:8px"><div class="trade-head"><strong>商队贸易</strong><span class="tag ${atWar ? 'red' : 'green'}">${atWar ? '交战禁运' : '商路畅通'}</span></div><div class="trade-detail">双方都拥有集市，可派遣商人交换资源。拟定协定时可设置 ${D.TRADE_TERM.min}–${D.TRADE_TERM.max} 天的交付期限，商队必须在期限内送达。</div><div class="action-row"><button class="action-btn primary" data-act="diplo-trade" ${atWar ? 'disabled' : ''}>拟定贸易协定</button></div></div>` : `<div class="empty-note" style="margin-top:8px">双方都建造集市后，才能进行贸易。</div>`}
-            <div class="section-title" style="margin-top:16px">战争与停战</div>
+            ${hasBothMarkets ? `<div class="trade-panel" style="margin-top:0.5rem"><div class="trade-head"><strong>商队贸易</strong><span class="tag ${atWar ? 'red' : 'green'}">${atWar ? '交战禁运' : '商路畅通'}</span></div><div class="trade-detail">双方都拥有集市，可派遣商人交换资源。拟定协定时可设置 ${D.TRADE_TERM.min}–${D.TRADE_TERM.max} 天的交付期限，商队必须在期限内送达。</div><div class="action-row"><button class="action-btn primary" data-act="diplo-trade" ${atWar ? 'disabled' : ''}>拟定贸易协定</button></div></div>` : `<div class="empty-note" style="margin-top:0.5rem">双方都建造集市后，才能进行贸易。</div>`}
+            <div class="section-title" style="margin-top:1rem">战争与停战</div>
             ${warsHtml || '<div class="empty-note">双方目前没有战争。</div>'}
           </div>
         </div>
@@ -663,7 +663,7 @@
         <div class="action-row"><button class="action-btn primary" data-act="mil-peace" data-war="${w.id}" data-fid="${otherId}">提出停战</button><button class="action-btn" data-act="mil-invite-ally" ${allies.length ? '' : 'disabled'}>邀请盟友</button><button class="action-btn" data-act="mil-call-vassal" ${vassals.length ? '' : 'disabled'}>征召封臣</button></div>
       </div>`;
     }).join('') || '<div class="empty-note">当前没有战争。</div>';
-    const queueHtml = queues.map((b) => `<div class="training-overview"><div class="to-head"><span>${D.buildingName(b.def, b.level)}</span><span>${b.trainingQueue.map((q) => D.UNITS[q.kind].name).join('、')}</span></div>${b.trainingQueue.map((q) => `<div class="meter" style="margin-top:4px"><i style="width:${U.clamp((q.progress || 0) / Math.max(.1, q.days), 0, 1) * 100}%"></i></div>`).join('')}<div class="to-sub">训练会自动进行，无需工人</div></div>`).join('') || '<div class="empty-note">没有正在训练的部队。</div>';
+    const queueHtml = queues.map((b) => `<div class="training-overview"><div class="to-head"><span>${D.buildingName(b.def, b.level)}</span><span>${b.trainingQueue.map((q) => D.UNITS[q.kind].name).join('、')}</span></div>${b.trainingQueue.map((q) => `<div class="meter" style="margin-top:0.25rem"><i style="width:${U.clamp((q.progress || 0) / Math.max(.1, q.days), 0, 1) * 100}%"></i></div>`).join('')}<div class="to-sub">训练会自动进行，无需工人</div></div>`).join('') || '<div class="empty-note">没有正在训练的部队。</div>';
     const body = `<div class="military-summary">
       <div class="summary-cell"><div class="sc-label">军队人数</div><div class="sc-value">${soldiers.length}</div><div class="sc-note">占用人口 ${soldiers.length} 人</div></div>
       <div class="summary-cell"><div class="sc-label">军力评估</div><div class="sc-value">${Math.round(g._factionPower(f.id))}</div><div class="sc-note">部队、城防与领地</div></div>
@@ -671,9 +671,9 @@
       <div class="summary-cell"><div class="sc-label">训练队列</div><div class="sc-value">${trainingTotal}</div><div class="sc-note">${militaryBuildings.length} 座军事建筑</div></div>
     </div>
     <div class="military-panel-grid">
-      <div><div class="section-title">你的军队</div><div class="button-row" style="margin-bottom:8px"><button class="action-btn primary" data-act="mil-select-all">${icon('military')}选择全部军队</button><button class="action-btn" data-act="help-open">战斗规则</button></div>${armyGroups}<div class="section-title" style="margin-top:16px">训练与驻防</div>${queueHtml}</div>
+      <div><div class="section-title">你的军队</div><div class="button-row" style="margin-bottom:0.5rem"><button class="action-btn primary" data-act="mil-select-all">${icon('military')}选择全部军队</button><button class="action-btn" data-act="help-open">战斗规则</button></div>${armyGroups}<div class="section-title" style="margin-top:1rem">训练与驻防</div>${queueHtml}</div>
       <div><div class="section-title">战争</div><div class="wars-overview">${warsHtml}</div>
-        <div class="section-title" style="margin-top:16px">外交关系</div>
+        <div class="section-title" style="margin-top:1rem">外交关系</div>
         <div class="stat-line"><span class="k">盟友</span><span class="v">${allies.map((x) => esc(D.realmFullName(x))).join('、') || '无'}</span></div>
         <div class="stat-line"><span class="k">封臣</span><span class="v">${vassals.map((x) => esc(D.realmFullName(x))).join('、') || '无'}</span></div>
         <div class="stat-line"><span class="k">城防建筑</span><span class="v">${g.buildings.filter((b) => b.owner === f.id && (b.defId === 'tower' || b.defId === 'wall' || b.defId === 'gate')).length}</span></div>
@@ -701,7 +701,7 @@
       realm: (n) => ['build', 'civic', 'population', 'tech', 'rank', 'settlement', 'tutorial', 'victory', 'defeat'].includes(n.type)
     };
     const items = g.notifications.slice().reverse().filter(filterMap[this.chronicleFilter] || filterMap.all);
-    const body = `<div class="chronicle-toolbar">${[['all', '全部'], ['war', '战争'], ['politics', '外交与贸易'], ['realm', '王国']].map(([v, label]) => `<button class="filter-btn ${v === this.chronicleFilter ? 'active' : ''}" data-act="chronicle-filter" data-filter="${v}">${label}</button>`).join('')}<span class="muted" style="font-size:11px;margin-left:auto">${g.notifications.length} 条记录</span></div>
+    const body = `<div class="chronicle-toolbar">${[['all', '全部'], ['war', '战争'], ['politics', '外交与贸易'], ['realm', '王国']].map(([v, label]) => `<button class="filter-btn ${v === this.chronicleFilter ? 'active' : ''}" data-act="chronicle-filter" data-filter="${v}">${label}</button>`).join('')}<span class="muted" style="font-size:0.6875rem;margin-left:auto">${g.notifications.length} 条记录</span></div>
       <div class="chronicle-list">${items.length ? items.map((n) => `<div class="chronicle-entry ${n.type || 'info'}"><div class="chronicle-date">${U.timeToDate(n.time).year}年 · ${U.timeToDate(n.time).season} · 第${U.timeToDate(n.time).day}日</div><div class="chronicle-text"><span class="chronicle-badge"></span>${esc(n.text)}</div></div>`).join('') : '<div class="empty-state">编年史还没有写下任何文字。</div>'}</div>`;
     this.openModal({ kind: 'chronicle', eyebrow: 'THE CHRONICLE · 编年史', title: '编年史', subtitle: '记住发生过的事，才能知道自己将去往何处。', body, wide: true });
     this.setNavActive('chronicle');
@@ -853,7 +853,7 @@
       <div class="stat-line"><span class="k">地图尺度</span><span class="v">${D.MAP_SIZES[this.game.settings.mapSize]?.name || '辽阔'} · ${this.game.world.w} × ${this.game.world.h}</span></div>
       <div class="stat-line"><span class="k">AI 难度</span><span class="v">${D.DIFFICULTIES[this.game.settings.difficulty]?.label || '普通'}</span></div>
       <div class="stat-line"><span class="k">游戏时间</span><span class="v">${U.dateLabel(this.game.timeDays)}</span></div>
-      <div class="save-actions" style="margin-top:10px"><button class="action-btn primary" id="save-now">立即保存</button><button class="action-btn" id="load-now" ${app.hasSave() ? '' : 'disabled'}>读取最近存档</button></div>
+      <div class="save-actions" style="margin-top:0.625rem"><button class="action-btn primary" id="save-now">立即保存</button><button class="action-btn" id="load-now" ${app.hasSave() ? '' : 'disabled'}>读取最近存档</button></div>
       <p class="save-note" id="save-status">${app.saveStatus || '自动保存已开启。'}</p>
     </div>
     <div class="settings-section danger-zone">
@@ -918,19 +918,19 @@
   P.openPauseMenu = function () {
     if (!this.game) return;
     const g = this.game;
-    const body = `<div style="text-align:center;padding:8px 0 16px">
+    const body = `<div style="text-align:center;padding:0.5rem 0 1rem">
         <div class="eyebrow" style="justify-content:center;color:rgba(96,75,43,.6)">THE REALM AWAITS</div>
-        <h3 style="font-family:var(--font-title);font-weight:400;font-size:30px;letter-spacing:.12em;margin:10px 0 4px;color:#392d1e">${esc(D.realmFullName(g.player))}</h3>
-        <p style="font-size:12px;color:rgba(81,65,42,.62);margin:0">${U.dateLabel(g.timeDays)} · ${g.ownedSettlements(g.playerFactionId).length} 座定居点 · 人口 ${g.livingPopulation(g.playerFactionId)}</p>
+        <h3 style="font-family:var(--font-title);font-weight:400;font-size:1.875rem;letter-spacing:.12em;margin:0.625rem 0 0.25rem;color:#392d1e">${esc(D.realmFullName(g.player))}</h3>
+        <p style="font-size:0.75rem;color:rgba(81,65,42,.62);margin:0">${U.dateLabel(g.timeDays)} · ${g.ownedSettlements(g.playerFactionId).length} 座定居点 · 人口 ${g.livingPopulation(g.playerFactionId)}</p>
       </div>
       <div class="button-row" style="justify-content:center;flex-wrap:wrap">
-        <button class="action-btn primary" data-act="resume" style="min-width:140px">继续统治</button>
-        <button class="action-btn" data-act="save" style="min-width:110px">保存游戏</button>
-        <button class="action-btn" data-act="help-open" style="min-width:110px">王国法典</button>
-        <button class="action-btn" data-act="settings-open" style="min-width:110px">设置</button>
-        <button class="action-btn" data-act="return-menu" style="min-width:140px">返回主菜单</button>
+        <button class="action-btn primary" data-act="resume" style="min-width:8.75rem">继续统治</button>
+        <button class="action-btn" data-act="save" style="min-width:6.875rem">保存游戏</button>
+        <button class="action-btn" data-act="help-open" style="min-width:6.875rem">王国法典</button>
+        <button class="action-btn" data-act="settings-open" style="min-width:6.875rem">设置</button>
+        <button class="action-btn" data-act="return-menu" style="min-width:8.75rem">返回主菜单</button>
       </div>
-      <div class="effect-line" style="text-align:center;margin-top:16px">翻阅书页时时间暂停。按 <kbd>Esc</kbd> 继续游戏。</div>`;
+      <div class="effect-line" style="text-align:center;margin-top:1rem">翻阅书页时时间暂停。按 <kbd>Esc</kbd> 继续游戏。</div>`;
     this.openModal({ kind: 'pause', eyebrow: 'THE ROYAL COUNCIL · 王廷', title: '暂停', body, narrow: true });
   };
 

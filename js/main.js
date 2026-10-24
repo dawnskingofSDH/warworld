@@ -311,7 +311,7 @@
       const load = document.getElementById('loading-screen');
       if (!load) return;
       const panel = load.querySelector('.loading-panel');
-      if (panel) panel.innerHTML = `<div class="loading-emblem">!</div><h3>世界未能生成</h3><p>${U.esc(err.message || '未知错误')}</p><button class="action-btn" id="loading-back" style="margin-top:14px">返回主菜单</button><small>请刷新页面后重试。</small>`;
+      if (panel) panel.innerHTML = `<div class="loading-emblem">!</div><h3>世界未能生成</h3><p>${U.esc(err.message || '未知错误')}</p><button class="action-btn" id="loading-back" style="margin-top:0.875rem">返回主菜单</button><small>请刷新页面后重试。</small>`;
       const btn = document.getElementById('loading-back');
       if (btn) btn.addEventListener('click', () => {
         load.classList.add('hidden');
@@ -384,20 +384,20 @@
       const g = this.game;
       const f = g.player;
       const s = g.ownedSettlements(f.id)[0];
-      const body = `<div style="text-align:center;padding-bottom:5px">
+      const body = `<div style="text-align:center;padding-bottom:0.3125rem">
           <div class="eyebrow" style="justify-content:center;color:rgba(98,76,43,.6)">THE FIRST PAGE · 第一页</div>
-          <h3 style="font-family:var(--font-title);font-weight:400;font-size:32px;letter-spacing:.12em;margin:12px 0 6px;color:#372b1c">${esc(D.realmFullName(f))}</h3>
-          <p style="font-size:12.5px;color:rgba(78,62,39,.7);margin:0 0 16px">${U.dateLabel(g.timeDays)}，你的旗帜在「${esc(s ? s.name : '荒野')}」升起。</p>
+          <h3 style="font-family:var(--font-title);font-weight:400;font-size:2rem;letter-spacing:.12em;margin:0.75rem 0 0.375rem;color:#372b1c">${esc(D.realmFullName(f))}</h3>
+          <p style="font-size:0.78125rem;color:rgba(78,62,39,.7);margin:0 0 1rem">${U.dateLabel(g.timeDays)}，你的旗帜在「${esc(s ? s.name : '荒野')}」升起。</p>
         </div>
         <div class="effect-line" style="border-left-color:#987f4c;line-height:1.8">你有 <strong>五名居民</strong>、一座村庄大厅，以及一段漫长的岁月。时间是这个世界最真实的资源。</div>
-        <div class="split-section" style="margin-top:14px">
-          <div><div class="mini-title">第一步</div><ul style="font-size:12px;line-height:1.9;margin:0;padding-left:17px;color:rgba(68,53,33,.82)">
+        <div class="split-section" style="margin-top:0.875rem">
+          <div><div class="mini-title">第一步</div><ul style="font-size:0.75rem;line-height:1.9;margin:0;padding-left:1.0625rem;color:rgba(68,53,33,.82)">
             <li>选中居民，右键树林或浆果丛开始采集。</li>
             <li>从左侧「建造」放置民宅、农田与伐木场。</li>
             <li>资源建筑完工后，派居民进入才会生产。</li>
             <li>随时可以暂停，或在「内政」查看全貌。</li>
           </ul></div>
-          <div><div class="mini-title">记住</div><ul style="font-size:12px;line-height:1.9;margin:0;padding-left:17px;color:rgba(68,53,33,.82)">
+          <div><div class="mini-title">记住</div><ul style="font-size:0.75rem;line-height:1.9;margin:0;padding-left:1.0625rem;color:rgba(68,53,33,.82)">
             <li>资源属于各个定居点，不通用。</li>
             <li>建筑需要工匠施工；建筑工速度更快。</li>
             <li>每座民宅都会帮助你增加人口。</li>
@@ -405,9 +405,9 @@
           </ul></div>
         </div>
         <div class="gold-divider"></div>
-        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-          <div style="font-size:11.5px;color:rgba(83,66,41,.6);line-height:1.7">按 <kbd>H</kbd> 随时打开王国法典。<br>按 <kbd>空格</kbd> 暂停，拖动中键移动视野。</div>
-          <button class="action-btn primary" data-close-modal style="min-width:150px;padding:10px 14px">翻开编年史</button>
+        <div style="display:flex;gap:0.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap">
+          <div style="font-size:0.71875rem;color:rgba(83,66,41,.6);line-height:1.7">按 <kbd>H</kbd> 随时打开王国法典。<br>按 <kbd>空格</kbd> 暂停，拖动中键移动视野。</div>
+          <button class="action-btn primary" data-close-modal style="min-width:9.375rem;padding:0.625rem 0.875rem">翻开编年史</button>
         </div>`;
       this.ui.openModal({ kind: 'welcome', eyebrow: '战争世界 · WARWORLD', title: '你的时代开始了', subtitle: '从五名居民开始，建立属于你的王朝。', body, narrow: true });
       this.ui.setNavActive(null);
