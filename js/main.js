@@ -409,7 +409,7 @@
           <div style="font-size:11.5px;color:rgba(83,66,41,.6);line-height:1.7">按 <kbd>H</kbd> 随时打开王国法典。<br>按 <kbd>空格</kbd> 暂停，拖动中键移动视野。</div>
           <button class="action-btn primary" data-close-modal style="min-width:150px;padding:10px 14px">翻开编年史</button>
         </div>`;
-      this.ui.openModal({ kind: 'welcome', eyebrow: 'WARWORLD · 战争世界', title: '你的时代开始了', subtitle: '从五名居民开始，建立属于你的王朝。', body, narrow: true });
+      this.ui.openModal({ kind: 'welcome', eyebrow: '战争世界 · WARWORLD', title: '你的时代开始了', subtitle: '从五名居民开始，建立属于你的王朝。', body, narrow: true });
       this.ui.setNavActive(null);
     },
 

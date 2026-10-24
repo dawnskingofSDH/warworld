@@ -14,7 +14,16 @@
         playerName: '', mapSize: 'vast', aiCount: 4, difficulty: 'normal', seed: null, tutorial: true
       }, settings || {});
       this.seed = (saved && saved.seed) || String(this.settings.seed == null ? Date.now() : this.settings.seed);
-      this.world = WW.MapGen.generate(this.settings, onProgress);
+      // Saves remember their world dimensions. Saves from before the map-size
+      // increase fall back to the legacy dimensions so old terrain still fits.
+      let worldSettings = this.settings;
+      if (saved && saved.worldSize && saved.worldSize.w && saved.worldSize.h) {
+        worldSettings = Object.assign({}, this.settings, { worldW: saved.worldSize.w, worldH: saved.worldSize.h });
+      } else if (saved) {
+        const legacy = WW.MapGen.legacySize(this.settings.mapSize);
+        if (legacy) worldSettings = Object.assign({}, this.settings, { worldW: legacy.w, worldH: legacy.h });
+      }
+      this.world = WW.MapGen.generate(worldSettings, onProgress);
       if (saved && saved.nodeOverrides) WW.MapGen.applyOverrides(this.world, saved.nodeOverrides);
       this.path = new WW.Pathfinder(this.world);
       this.timeDays = 0;
@@ -70,10 +79,16 @@
     ownedSettlements(fid) { return this.settlements.filter((s) => s.owner === fid && !s.ruined); }
     ownedBuildings(fid) { return this.buildings.filter((b) => b.owner === fid); }
     settlementBuildings(sid) { return this.buildings.filter((b) => b.settlementId === sid && !b.dead); }
-    factionUnits(fid, includeShips) {
-      return this.units.filter((u) => u.owner === fid && (includeShips || !u.isShip));
+    houseCountIn(settlementId) {
+      return this.buildings.filter((b) => b.settlementId === settlementId && b.defId === 'house' && !b.dead).length;
     }
-    livingPopulation(fid) { return this.units.filter((u) => u.owner === fid && !u.isShip).length; }
+    houseLimitFor(settlement) {
+      return D.houseLimit(settlement ? settlement.stage : 1);
+    }
+    factionUnits(fid, includeShips) {
+      return this.units.filter((u) => u.owner === fid && !u.dead && (includeShips || !u.isShip));
+    }
+    livingPopulation(fid) { return this.units.filter((u) => u.owner === fid && !u.dead && !u.isShip).length; }
     hallOf(settlement) { return this.getBuilding(settlement.hallId); }
     primaryHall(settlement) {
       const hall = this.hallOf(settlement);
@@ -424,13 +439,13 @@
     _insideSettlement(settlement, x, y) {
       const c = this.settlementCenter(settlement);
       const hall = this.primaryHall(settlement);
-      const rad = hall && hall.complete && hall.def.radius ? hall.def.radius[hall.level] : 9;
+      const rad = hall && hall.complete && hall.def.radius ? hall.def.radius[hall.level] : 12;
       const half = 0; // footprint is checked separately
       return U.dist(c.x, c.y, x + half, y + half) <= rad;
     }
     requirementCheck(def, x, y, settlement, ignoreCost, levelOverride) {
       if (!settlement) return { ok: false, error: '尚未选择定居点' };
-      const topLevel = levelOverride || levelForPlacement(def, settlement);
+      const topLevel = levelOverride != null ? levelOverride : levelForPlacement(def, settlement);
       const w = def.foot[0], h = def.foot[1];
       if (x < 0 || y < 0 || x + w > this.world.w || y + h > this.world.h) return { ok: false, error: '超出世界边界' };
       if (!def.buildOutside) {
@@ -452,6 +467,17 @@
       if (def.unique) {
         const existing = this.buildings.filter((b) => b.settlementId === settlement.id && b.defId === def.id && !b.dead);
         if (existing.length) return { ok: false, error: '每个定居点只能建造一座' + def.name };
+      }
+      if (def.id === 'house') {
+        const limit = this.houseLimitFor(settlement);
+        const count = this.houseCountIn(settlement.id);
+        if (count >= limit) {
+          return {
+            ok: false,
+            error: `本定居点民宅已达上限（${limit} 座）。升级大厅可提高上限。`,
+            houseLimit: limit, houseCount: count
+          };
+        }
       }
       if (def.requires) {
         const req = def.requires;
@@ -528,6 +554,7 @@
         savedAt: Date.now(),
         seed: this.seed,
         settings: this.settings,
+        worldSize: { w: this.world.w, h: this.world.h },
         timeDays: this.timeDays,
         counters: this.counters,
         rngState: this.rng.state,
@@ -606,11 +633,13 @@
     // convenience used by getStorageCaps; filled later with tech data
   }
 
-  function levelForPlacement(def, settlement) {
-    if (!settlement) return 1;
-    let lvl = Math.min(settlement.stage || 1, def.maxLevel);
-    lvl = Math.max(def.minLevel || 1, lvl);
-    return lvl;
+  function levelForPlacement(def, settlement, requestedLevel) {
+    if (!settlement) return Math.max(1, def.minLevel || 1);
+    const highest = Math.max(def.minLevel || 1, Math.min(settlement.stage || 1, def.maxLevel));
+    if (requestedLevel == null || requestedLevel === 'max') return highest;
+    const lvl = Math.floor(Number(requestedLevel));
+    if (!isFinite(lvl)) return highest;
+    return U.clamp(lvl, def.minLevel || 1, highest);
   }
 
   WW.Game = Game;

@@ -54,7 +54,7 @@
         <div class="li-main"><div class="li-name" style="${o.done ? 'color:#536a48;' : ''}">${esc(o.title)}</div><div class="li-sub">${esc(o.hint)}</div></div>
         <span class="li-badge">${o.done ? '完成' : '待办'}</span>
       </div>`).join('')}
-      <div class="effect-line">初期提示：五名居民非常宝贵。你可以让居民直接采集浆果与木材，也可以建造资源建筑并派驻居民。所有资源都只属于当前定居点，注意查看顶部栏显示的当前定居点名称。</div>
+      <div class="effect-line">初期提示：五名居民非常宝贵。你可以让居民直接采集浆果与木材，也可以建造资源建筑并派驻居民。所有资源都只属于当前定居点；顶部栏最大的名字就是当前定居点。</div>
     </div>`;
     this.openModal({ kind: 'tutorial', eyebrow: 'THE ROYAL COMMISSION · 王命', title: '王室谕令', subtitle: '在漫长的年代中建立属于你的王朝。', body, footer: `<div class="note">可以随时按 H 打开王国法典查阅完整规则。</div><button class="action-btn primary" data-close-modal>继续统治</button>`, narrow: true });
     this.setNavActive(null);
@@ -89,6 +89,11 @@
     const warCount = g.warsFor(player.id).length;
     const aidCost = 18 + active.stage * 7;
     const cooldown = Math.max(0, Math.ceil(active.aidCooldown - g.timeDays));
+    const freePop = Math.max(0, popCap - pop);
+    const colonyAffordable = g.canAfford(active, g.COLONY_COST);
+    const colonyPopOk = freePop >= 3;
+    const houseCount = g.houseCountIn(active.id);
+    const houseLimit = g.houseLimitFor(active);
     const counts = {};
     for (const b of buildings) counts[b.defId] = (counts[b.defId] || 0) + 1;
     let listHtml = settlements.map((s) => {
@@ -129,6 +134,7 @@
         <button class="action-btn primary" style="width:100%" data-act="internal-build">${icon('build')}打开建造面板</button>
         <div style="height:5px"></div>
         <button class="action-btn" style="width:100%" data-act="internal-colonize">${icon('flag')}建立新的定居点</button>
+        <div class="cooldown-note">需 ${Object.entries(g.COLONY_COST).map(([k, v]) => v + ' ' + D.RES[k].name).join('、')}，以及 3 个空余人口。当前空余人口 ${freePop}${!colonyAffordable ? ' · 资源不足' : !colonyPopOk ? ' · 人口容量不足' : ''}</div>
       </aside>
       <section>
         <div class="settlement-main-head">
@@ -139,7 +145,7 @@
         <div class="summary-grid">
           <div class="summary-cell"><div class="sc-label">人口（全阵营）</div><div class="sc-value">${pop}<small style="font-size:11px;opacity:.45"> / ${popCap}</small></div><div class="sc-note">居民与士兵均占用人口</div></div>
           <div class="summary-cell"><div class="sc-label">本城建筑</div><div class="sc-value">${buildings.length}</div><div class="sc-note">${Object.keys(counts).length} 种建筑</div></div>
-          <div class="summary-cell"><div class="sc-label">稳定度</div><div class="sc-value" style="color:${stability < 25 ? '#8d463b' : stability < 50 ? '#806835' : '#4e6540'}">${Math.floor(stability)}</div><div class="sc-note">目标 ${Math.round(target)}</div></div>
+          <div class="summary-cell"><div class="sc-label">稳定度</div><div class="sc-value" style="color:${stability < D.INDEPENDENCE.threshold ? '#8d463b' : stability < 50 ? '#806835' : '#4e6540'}">${Math.floor(stability)}</div><div class="sc-note">目标 ${Math.round(target)}</div></div>
           <div class="summary-cell"><div class="sc-label">当前战争</div><div class="sc-value">${activeWars.length}</div><div class="sc-note">${warCount ? '战争使稳定度承压' : '和平年代'}</div></div>
         </div>
         <div class="overview-columns" style="margin-top:16px">
@@ -151,7 +157,7 @@
               <div class="stability-orb" style="--stability:${Math.floor(stability)}%"><span>${Math.floor(stability)}</span></div>
               <div class="stability-copy">
                 <strong>${stability < 20 ? '风雨飘摇' : stability < 40 ? '暗流涌动' : stability < 65 ? '尚算安宁' : '民心归附'}</strong>
-                <p>稳定度低于 0 时每天有概率独立成为新的 AI 阵营。战争、物资短缺与长期占领都会削弱稳定。</p>
+                <p>稳定度低于 ${D.INDEPENDENCE.threshold} 时每天都有独立风险；一旦降至 0，定居点会立即独立成为新的 AI 阵营。战争、物资短缺与长期占领都会削弱稳定。</p>
                 <div class="stability-meter-large"><i style="width:${U.clamp(stability, 0, 100)}%"></i></div>
               </div>
             </div>
@@ -164,11 +170,12 @@
             <div class="upkeep-list">${upkeepItems}</div>
             <div class="section-title" style="margin-top:18px">人口与劳力</div>
             <div class="population-line"><span>全阵营人口</span><div class="population-bar"><i style="width:${U.clamp(pop / Math.max(1, popCap), 0, 1) * 100}%"></i></div><span>${pop} / ${popCap}</span></div>
-            <p class="nearby-note">民宅会提高人口上限，并随时间自动产生新居民。每名居民与士兵都占用 1 人口。</p>
+            <p class="nearby-note">民宅会提高人口上限，并随时间自动产生新居民。每名居民与士兵都占用 1 人口。本城民宅 ${houseCount}/${houseLimit}；升级定居点阶段可提高民宅上限。</p>
             <div class="worker-summary" style="margin-top:8px">
               <span><b>${g.units.filter((u) => !u.dead && u.owner === player.id && u.kind === 'resident' && u.state === 'idle').length}</b>空闲居民</span>
               <span><b>${g.units.filter((u) => !u.dead && u.owner === player.id && u.kind === 'builder').length}</b>建筑工</span>
               <span><b>${g.units.filter((u) => !u.dead && u.owner === player.id && u.def.military).length}</b>士兵</span>
+              <span><b>${houseCount}/${houseLimit}</b>民宅</span>
             </div>
             <div class="section-title" style="margin-top:18px">稳定度构成</div>
             ${stabilityFactors.map(([k, v]) => `<div class="stat-line"><span class="k">${esc(k)}</span><span class="v ${String(v).startsWith('−') ? 'bad' : 'good'}">${esc(v)}</span></div>`).join('')}
@@ -216,7 +223,10 @@
     const hasBothMarkets = markets.length > 0 && g.hasMarket(selected.id);
     const cbs = g.casusBelliAgainst(player.id, selected.id);
     const war = g.getWar(player.id, selected.id);
-    const activeDeals = g.tradeDeals.filter((d) => !d.failed && !d.completedAt && ((d.a === player.id && d.b === selected.id) || (d.b === player.id && d.a === selected.id)));
+    const activeDeals = g.activeTradeDealsFor(player.id);
+    const relationDeals = g.tradeDeals.filter((d) =>
+      (d.a === player.id && d.b === selected.id) || (d.b === player.id && d.a === selected.id)
+    ).slice().sort((a, b) => (b.started || 0) - (a.started || 0)).slice(0, 8);
     const powerSelf = g._factionPower(player.id);
     const powerOther = g._factionPower(selected.id);
     const relationHTML = `<span class="relation-pill" style="color:${rel.color}">${rel.label}</span>`;
@@ -263,12 +273,26 @@
       <div class="war-exhaust"><span>敌方厌战</span><div class="meter"><i style="width:${U.clamp((war.exhaustion[selected.id] || 0) / 140, 0, 1) * 100}%"></i></div><span>${Math.floor(war.exhaustion[selected.id] || 0)}</span></div>
       <div class="action-row"><button class="action-btn" data-act="diplo-peace">${icon('diplomacy')}提出停战</button>${g.alliesOf(player.id).length ? `<button class="action-btn" data-act="diplo-invite-ally">邀请盟友参战</button>` : ''}${g.vassalsOf(player.id).length ? `<button class="action-btn" data-act="diplo-call-vassal">征召封臣</button>` : ''}</div>
     </div>` : '';
-    const dealsHtml = activeDeals.length ? `<div class="trade-list">${activeDeals.map((d) => {
+    const dealStatusHtml = (d) => {
       const otherIsA = d.a === player.id;
       const outgoing = otherIsA ? d.goodsA : d.goodsB;
       const incoming = otherIsA ? d.goodsB : d.goodsA;
-      return `<div class="trade-row"><div class="tr-main">${fmt(outgoing.amount)} ${D.RES[outgoing.res].name} ⇄ ${fmt(incoming.amount)} ${D.RES[incoming.res].name}<div class="tr-state">我方${d.delivered[otherIsA ? 'a' : 'b'] ? '已送达' : '运输中'} · 对方${d.delivered[otherIsA ? 'b' : 'a'] ? '已送达' : '运输中'} · 截止 ${U.timeToDate(d.deadline).day}日</div></div></div>`;
-    }).join('')}</div>` : '';
+      const remaining = Math.max(0, Math.ceil(d.deadline - g.timeDays));
+      const status = d.failed ? '已失效' : d.completedAt ? '已完成' : `运输中 · 剩余 ${remaining} 天`;
+      const delivered = d.delivered || {};
+      const dd = U.timeToDate(d.deadline);
+      return `<div class="trade-row"><div class="tr-main">${fmt(outgoing.amount)} ${D.RES[outgoing.res].name} ⇄ ${fmt(incoming.amount)} ${D.RES[incoming.res].name}<div class="tr-state">${status} · 截止第${dd.year}年${dd.season}季第${dd.day}日<br>我方${delivered[otherIsA ? 'a' : 'b'] ? '已送达' : '运输中'} · 对方${delivered[otherIsA ? 'b' : 'a'] ? '已送达' : '运输中'} · 期限 ${d.durationDays || Math.max(1, Math.round(d.deadline - d.started))} 天</div></div></div>`;
+    };
+    const dealsHtml = relationDeals.length
+      ? `<div class="trade-list">${relationDeals.map((d) => dealStatusHtml(d)).join('')}</div>`
+      : '<div class="empty-note">还没有与该阵营签订贸易协定。</div>';
+    const tradeSummaryHtml = activeDeals.length ? `<div class="trade-list">${activeDeals.slice(0, 5).map((d) => {
+      const otherId = d.a === player.id ? d.b : d.a;
+      const outgoing = d.a === player.id ? d.goodsA : d.goodsB;
+      const incoming = d.a === player.id ? d.goodsB : d.goodsA;
+      const remaining = Math.max(0, Math.ceil(d.deadline - g.timeDays));
+      return `<div class="trade-row"><div class="tr-main">${esc(g.factionLabel(otherId))}<br>${fmt(outgoing.amount)} ${D.RES[outgoing.res].name} ⇄ ${fmt(incoming.amount)} ${D.RES[incoming.res].name}<div class="tr-state">剩余 ${remaining} 天</div></div></div>`;
+    }).join('')}</div>${activeDeals.length > 5 ? `<div class="empty-note">另有 ${activeDeals.length - 5} 项贸易协定，可在对应阵营页面查看。</div>` : ''}` : '';
     const statusInfo = [];
     if (selected.rank > 0) statusInfo.push(`<div class="stat-line"><span class="k">阵营等级</span><span class="v">${D.RANK_NAMES[selected.rank]}</span></div>`);
     if (overlord) { const o = g.getFaction(overlord); statusInfo.push(`<div class="stat-line"><span class="k">宗主</span><span class="v">${o ? esc(D.realmFullName(o)) : '—'}</span></div>`); }
@@ -286,6 +310,8 @@
         <div class="stat-line"><span class="k">封臣</span><span class="v">${g.vassalsOf(player.id).length}</span></div>
         <div class="stat-line"><span class="k">宗主</span><span class="v">${g.overlordOf(player.id) ? esc(g.factionLabel(g.overlordOf(player.id))) : '无'}</span></div>
         <div class="stat-line"><span class="k">战争</span><span class="v">${g.warsFor(player.id).length}</span></div>
+        <div class="stat-line"><span class="k">贸易协定</span><span class="v">${activeDeals.length} 项进行中</span></div>
+        ${activeDeals.length ? `<div class="mini-title" style="margin-top:8px">进行中的商队</div>${tradeSummaryHtml}` : ''}
       </aside>
       <section>
         <div class="diplo-detail-head">
@@ -314,10 +340,11 @@
             ${statusInfo.join('') || '<div class="empty-note">尚无正式条约。</div>'}
           </div>
           <div>
-            <div class="section-title">战争与停战</div>
+            <div class="section-title">贸易协定 <span class="muted" style="font-size:9.5px;letter-spacing:.05em">已签订</span></div>
+            ${dealsHtml}
+            ${hasBothMarkets ? `<div class="trade-panel" style="margin-top:8px"><div class="trade-head"><strong>商队贸易</strong><span class="tag ${atWar ? 'red' : 'green'}">${atWar ? '交战禁运' : '商路畅通'}</span></div><div class="trade-detail">双方都拥有集市，可派遣商人交换资源。拟定协定时可设置 ${D.TRADE_TERM.min}–${D.TRADE_TERM.max} 天的交付期限，商队必须在期限内送达。</div><div class="action-row"><button class="action-btn primary" data-act="diplo-trade" ${atWar ? 'disabled' : ''}>拟定贸易协定</button></div></div>` : `<div class="empty-note" style="margin-top:8px">双方都建造集市后，才能进行贸易。</div>`}
+            <div class="section-title" style="margin-top:16px">战争与停战</div>
             ${warsHtml || '<div class="empty-note">双方目前没有战争。</div>'}
-            <div class="section-title" style="margin-top:16px">贸易协定</div>
-            ${hasBothMarkets ? `<div class="trade-panel"><div class="trade-head"><strong>商队贸易</strong><span class="tag ${atWar ? 'red' : 'green'}">${atWar ? '交战禁运' : '商路畅通'}</span></div><div class="trade-detail">双方都拥有集市，可派遣商人交换资源。协定需要在规定时间内由商队送达对方集市。</div><div class="action-row"><button class="action-btn primary" data-act="diplo-trade" ${atWar ? 'disabled' : ''}>拟定贸易协定</button></div>${dealsHtml}</div>` : `<div class="empty-note">双方都建造集市后，才能进行贸易。</div>`}
           </div>
         </div>
         <div class="ability-note">${atWar ? '战争期间无法结盟、附庸或通商。提出和平后，若对方接受，双方将获得 70 天停战期。' : '你可以赠送银币提高关系。结盟需要足够好感；附庸需要更高阵营等级；一旦拒绝附庸要求，对方会获得战争理由。'}</div>
@@ -368,9 +395,10 @@
     const amounts = [10, 20, 30, 50, 80];
     const options = (list) => list.map((x) => `<option value="${x.id}">${esc(x.name)} · ${D.STAGE_NAMES[x.stage]}</option>`).join('');
     const body = `<h3>商队贸易 · ${esc(D.realmFullName(target))}</h3>
-      <p class="sub-copy">选择双方交换的资源与数量。双方都会派出一支商队，在 45 天内把货物送达对方集市。好感、集市等级和资源价值都会影响对方是否接受。</p>
+      <p class="sub-copy">选择双方交换的资源、数量与交付期限。双方都会派出一支商队，在约定期限内把货物送达对方集市。好感、集市等级、资源价值与期限长短都会影响对方是否接受。</p>
       <div class="form-grid">
         <div class="form-field"><label>我方出发集市</label><select id="trade-source">${options(markets)}</select></div>
+        <div class="form-field"><label>协议期限（天）</label><input id="trade-days" type="number" min="${D.TRADE_TERM.min}" max="${D.TRADE_TERM.max}" step="5" value="${D.TRADE_TERM.default}"></div>
         <div class="form-field"><label>我方提供</label><select id="trade-offer-res">${D.RES_KEYS.map((k) => `<option value="${k}">${D.RES[k].name}</option>`).join('')}</select></div>
         <div class="form-field"><label>提供数量</label><input id="trade-offer-amt" type="number" min="1" value="20"></div>
         <div class="form-field"><label>我方希望获得</label><select id="trade-request-res">${D.RES_KEYS.map((k) => `<option value="${k}" ${k === 'wood' ? 'selected' : ''}>${D.RES[k].name}</option>`).join('')}</select></div>
@@ -390,7 +418,7 @@
       const market = g.marketIn(s.id);
       const cap = market ? g.merchantCapacity(g.playerFactionId, market) : 0;
       const coins = s ? s.resources : {};
-      $('#trade-info').innerHTML = `当前集市商人载货上限 <b>${cap}</b>。出发地库存：${D.RES[offerRes.value].name} <b>${fmt(coins[offerRes.value] || 0)}</b>。对方拥有 ${targetMarkets.length} 座集市。商队需要陆地通路。`;
+      $('#trade-info').innerHTML = `当前集市商人载货上限 <b>${cap}</b>。出发地库存：${D.RES[offerRes.value].name} <b>${fmt(coins[offerRes.value] || 0)}</b>。对方拥有 ${targetMarkets.length} 座集市。商队需要陆地通路。期限可设为 ${D.TRADE_TERM.min}–${D.TRADE_TERM.max} 天；期限越短，对方越不愿意接受。`;
       offerAmt.max = cap;
       requestAmt.max = 120;
     };
@@ -403,14 +431,20 @@
       const source = sourceSel.value;
       const offer = { res: offerRes.value, amount: parseInt(offerAmt.value, 10) || 0 };
       const request = { res: requestRes.value, amount: parseInt(requestAmt.value, 10) || 0 };
+      const daysInput = $('#trade-days');
+      const durationDays = Math.round(parseInt(daysInput && daysInput.value, 10) || D.TRADE_TERM.default);
       const market = g.marketIn(source);
       const cap = market ? g.merchantCapacity(g.playerFactionId, market) : 0;
       if (!offer.amount || !request.amount) { $('#trade-error').textContent = '数量必须大于 0。'; return; }
       if (offer.amount > cap) { $('#trade-error').textContent = `商队载货上限为 ${cap}。`; return; }
-      const r = g.proposeTradeToAI(fid, offer, request, source);
+      if (!(durationDays >= D.TRADE_TERM.min && durationDays <= D.TRADE_TERM.max)) {
+        $('#trade-error').textContent = `协议期限必须在 ${D.TRADE_TERM.min}–${D.TRADE_TERM.max} 天之间。`;
+        return;
+      }
+      const r = g.proposeTradeToAI(fid, offer, request, source, durationDays);
       if (!r.ok) { $('#trade-error').textContent = r.error; return; }
       this.closeSubdialog();
-      if (r.accepted) this.showSubToast('对方接受了贸易协定。商队已经出发。');
+      if (r.accepted) this.showSubToast(`对方接受了贸易协定。商队已经出发，须在 ${durationDays} 天内送达。`);
       else this.showSubToast('对方拒绝了贸易条件。');
       this.openDiplomacy(fid);
     });
@@ -717,26 +751,29 @@
           <div class="codex-card"><strong>皮革</strong><span>没有天然资源点。猎人小屋必须靠近树林，产出食物与皮革。</span></div>
           <div class="codex-card"><strong>草药</strong><span>采集浆果与木材时有概率获得，采摘屋也会稳定产出。诊所与医院消耗草药治疗。</span></div>
         </div>
+        <p class="nearby-note">铁矿脉、银矿脉与金矿脉相当稀少，通常需要探索更远的地方，或在集市贸易中获取。石灰岩采石场偶尔也会挖出微量矿石。</p>
         <h4>再生与枯竭</h4><p>资源点被采集后不会消失，但储量会下降；每天按比例恢复，上限固定（生成时随机）。伐木场与采摘屋会显著加快附近资源点的再生。资源点可以被居民永久清除，以腾出土地。</p>
         <h4>跨越地形</h4><p>河流无法直接涉水，需桥梁或船只；湖泊与海洋只能乘船。高山需要隧道。桥梁、隧道、道路都由工程队即时铺设，但可被敌军摧毁。道路使移动速度 +35%。</p>`;
     }
     if (tab === 'buildings') return `<h3>建筑与定居点</h3><p class="codex-lead">所有建筑（除村庄大厅与特殊工程外）都必须建在当前定居点的领地内。建筑需要居民或建筑工施工，完成后才会生效。</p>
       <h4>定居点阶段</h4><p>村庄 → 小镇 → 城市 → 首都。阶段由大厅等级决定：村庄大厅、镇长大厅、市政厅、王宫。每级大厅都需要资源与漫长的施工。每个阵营只能拥有一座王宫。</p>
       <h4>建筑分类</h4><div class="codex-grid">
-        <div class="codex-card"><strong>政府</strong><span>村庄大厅决定领地和阶段；民宅提供人口上限，并随时间自动产生居民。</span></div>
+        <div class="codex-card"><strong>政府</strong><span>村庄大厅决定领地和阶段；民宅提供人口上限，并随时间自动产生居民。每个定居点民宅数量有限：村庄 ${D.HOUSE_LIMIT[1]}、小镇 ${D.HOUSE_LIMIT[2]}、城市 ${D.HOUSE_LIMIT[3]}、首都 ${D.HOUSE_LIMIT[4]} 座，升级大厅可提高上限。</span></div>
         <div class="codex-card"><strong>资源</strong><span>伐木场、猎人小屋、渔场、采摘屋、采石场、矿场、农田、磨坊、冶炼厂、铸币厂。多数需要工人。</span></div>
         <div class="codex-card"><strong>功能</strong><span>仓库提高本城仓储上限；教堂与酒馆提升稳定度；集市商人；诊所与医院治疗；码头造船。</span></div>
         <div class="codex-card"><strong>战争</strong><span>兵营、靶场、马厩训练士兵；箭塔自动射击；围墙可拖拽建造；点击围墙可改建为大门。</span></div>
         <div class="codex-card"><strong>科技</strong><span>图书馆、大学、皇家大学，分别研究一至三级科技。每个定居点各限一座。</span></div>
         <div class="codex-card"><strong>特殊</strong><span>桥梁只在河流上；隧道只在山上；道路可在任意陆地铺设。它们不消耗定居点领地。</span></div>
       </div>
+      <h4>选择建造阶段</h4><p>建造面板的「建造等级」可以选择当前定居点已解锁的任意阶段，不必总是建造最高级。低阶段建筑造价与工期更低，但工人位、产出与耐久也较低，之后仍可逐级升级。升级沿用原有地基与结构，资源消耗约为新建同级建筑的 ${Math.round(D.UPGRADE_COST_RATIO * 100)}%。</p>
       <h4>升级而不是替换</h4><p>定居点阶段提高后，现有建筑可以升级到同阶段的新形态，也可以直接在当前阶段建造新建筑。升级同样需要工匠，且完成前旧建筑继续运作。</p>
       <h4>耐久与维修</h4><p>建筑拥有耐久，被攻击会下降。选中受损建筑，派遣居民或建筑工维修。建筑工维修更快。建筑被摧毁后，其内部工人会受伤并被赶出。</p>
+      <h4>拆除建筑</h4><p>在己方建筑详情页可以拆除建筑或未完工的工地。拆除后建筑永久消失，投入的资源不会返还；内部人员会被安置到附近，不会受伤。定居点大厅是城市核心，不能拆除。</p>
       <h4>城门与围墙</h4><p>木质栅栏、石质窄墙、石质厚墙、雕文石墙随阶段变化。任何围墙段都可以转化为同阶段大门。大门可以开启或关闭：开启时单位自由通过；关闭时等同围墙。攻方必须先摧毁大门或城墙。</p>`;
     if (tab === 'internal') return `<h3>内政、人口与稳定</h3><p class="codex-lead">你的政权并不自动稳固。粮食短缺、战争和占领都会让城市滑向独立。</p>
-      <h4>人口</h4><p>人口是阵营层面的总量，居民、建筑工、商人和士兵都占用 1 人口。村庄大厅与每座民宅提供上限。民宅在人口未满且城市有食物时，会每隔若干天产生一名新居民。没有空闲人口就无法训练士兵或雇佣商人。</p>
+      <h4>人口</h4><p>人口是阵营层面的总量，居民、建筑工、商人和士兵都占用 1 人口。村庄大厅与每座民宅提供上限；每个定居点的民宅数量受阶段限制（村庄 ${D.HOUSE_LIMIT[1]}、小镇 ${D.HOUSE_LIMIT[2]}、城市 ${D.HOUSE_LIMIT[3]}、首都 ${D.HOUSE_LIMIT[4]} 座），升级大厅可提高上限。民宅在人口未满且城市有食物时，会间隔一段时间产生一名新居民；每座民宅独立计时，因此不会整排民宅在同一天同时添丁。没有空闲人口就无法训练士兵、雇佣商人或建立新定居点。</p>
       <h4> upkeep（每日消耗）</h4><p>村庄每日消耗食物；小镇还会消耗木材；城市消耗食物、木材与石材；首都还会消耗银币。若某座定居点无法支付其消耗，稳定度将快速下降。</p>
-      <h4>稳定度</h4><p>每座定居点有独立稳定度。教堂、酒馆营业、集市和科技能提高稳定度目标；战争、物资短缺和占领降低目标。稳定度降至 0 的城市每天有概率宣布独立，成为新的 AI 阵营，并带走所在地的全部建筑与人口。</p>
+      <h4>稳定度</h4><p>每座定居点有独立稳定度。教堂、酒馆营业、集市和科技能提高稳定度目标；战争、物资短缺和占领降低目标。稳定度低于 ${D.INDEPENDENCE.threshold} 时，每天都有概率宣布独立，越低越危险；一旦降至 0，城市会立即独立，成为新的 AI 阵营，并带走所在地的全部建筑与人口。</p>
       <h4>救助金</h4><p>在内政界面支付银币，可立即提高 16 点稳定度，每座城市每 20 天只能进行一次。救助金只解一时之急，长期仍要解决粮食与安全。</p>
       <h4>劳动力</h4><p>资源建筑必须有居民进入才能生产；越高级的建筑拥有更多工位。普通居民可以转为建筑工，建筑工施工速度翻倍，但永远不能再采集或进入资源建筑。请谨慎转职。</p>`;
     if (tab === 'war') return `<h3>单位与战争</h3><p class="codex-lead">没有战争的世界只是一张地图。士兵不会自然回血；他们需要诊所、医院和草药。</p>
@@ -745,6 +782,7 @@
         <div class="codex-card"><strong>建筑工</strong><span>施工速度 ×2，无法采集或进入资源建筑，且不可转回居民。</span></div>
         <div class="codex-card"><strong>士兵</strong><span>近战、远程与骑兵三大类。会自动攻击范围内的敌人，可手动攻击中立目标。无法自然恢复生命。</span></div>
         <div class="codex-card"><strong>船只</strong><span>在码头建造，可运载单位穿过水域。船有耐久，会被弓箭手与箭塔击沉。</span></div>
+        <div class="codex-card"><strong>遣散</strong><span>任何己方单位都可以遣散：永久离开并立即释放所占人口。船上仍有乘客时，需先让乘客登陆。</span></div>
       </div>
       <h4>战斗与战争</h4><p>只有处于战争关系的阵营单位互为敌人。无端攻击中立单位或建筑会立即宣战，并使其他所有阵营对你的好感下降。你可以使用战争理由（边界冲突、征服、独立）来减少声誉损失。</p>
       <h4>城墙攻防</h4><p>城墙阻挡寻路。进攻方需要先摧毁大门或一段城墙。箭塔在射程内自动攻击。守军可以开启大门出击，也可关闭城门固守。医院会治疗附近友军，诊所需要伤员进入。</p>
@@ -756,7 +794,7 @@
       <h4>结盟</h4><p>双方关系足够好时可缔结同盟。盟友被攻击时，另一方会收到是否参战的请求；拒绝不会自动解盟，但会严重损害关系。盟友也可以被邀请加入你正在进行的战争。</p>
       <h4>附庸</h4><p>阵营等级更高的一方可要求较低方成为附庸。拒绝会给予征服战争理由。宗主可以征召封臣参战；拒绝征召同样会给予征服理由。封臣的等级达到或超过宗主时，可以申请解除附庸；若宗主拒绝，封臣获得独立战争理由。</p>
       <h4>战争理由</h4><p>边界冲突由相邻定居点长期紧张随机产生；征服来自拒绝附庸要求或拒绝宗主征召；独立来自拒绝解除附庸。特定战争理由会减少其他列强的反感。</p>
-      <h4>贸易与商人</h4><p>双方需要至少各有一座集市。通过外交界面确定双方货物和数量；对方是否接受取决于价值、好感与商路。接受后，双方派出商人，在 45 天内把货物送到对方集市。商人可被敌军杀死，货物也会丢失。</p>
+      <h4>贸易与商人</h4><p>双方需要至少各有一座集市。通过外交界面确定双方货物、数量与交付期限（${D.TRADE_TERM.min}–${D.TRADE_TERM.max} 天）；对方是否接受取决于价值、好感、商路与期限长短。接受后，双方派出商人，必须在期限内把货物送到对方集市；已签订的协定可以在该阵营的外交页面查看。商人可被敌军杀死，货物也会丢失。</p>
       <p>也可以手动雇佣商人：靠近己方集市装货，然后移动到任意集市卸货。向外国集市卸货会提高双方好感。</p>`;
     if (tab === 'tech') return `<h3>科技与学识</h3><p class="codex-lead">学者不会在战场上为你赢得一场战役，却会改变之后每一场战役。</p>
       <h4>研究建筑</h4><p>图书馆（小镇）研究一级科技；大学（城市）研究二级科技，需要前置一级；皇家大学（首都）研究三级科技，需要前置二级。每个定居点各限一座。</p>
@@ -1000,10 +1038,17 @@
     if (act === 'internal-colonize') {
       const s = g.getSettlement(this.activeSettlementId);
       if (!s) return;
-      if (!g.canAfford(s, g.COLONY_COST)) { this.showSubToast('资源不足：需 90 食物、110 木材、50 石材、20 银币。'); return; }
-      if (g.livingPopulation(g.playerFactionId) + 3 > g.factionPopCap(g.playerFactionId)) { this.showSubToast('需要至少 3 个空余人口容量。请先修建民宅。'); return; }
+      if (!g.canAfford(s, g.COLONY_COST)) {
+        this.showSubToast(`资源不足：建立新定居点需要 ${Object.entries(g.COLONY_COST).map(([k, v]) => v + ' ' + D.RES[k].name).join('、')}。`);
+        return;
+      }
+      if (g.livingPopulation(g.playerFactionId) + 3 > g.factionPopCap(g.playerFactionId)) {
+        this.showSubToast('需要至少 3 个空余人口容量。请先修建民宅提高人口上限。');
+        return;
+      }
       this.closeModal();
       this.startPlacement({ settlementId: s.id, mode: 'found' });
+      this.showSubToast('在地图上选择新定居点的位置，左键确认，右键/ESC 取消。');
       return;
     }
     if (act === 'internal-rename') {

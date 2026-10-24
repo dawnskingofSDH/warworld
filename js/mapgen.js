@@ -132,9 +132,19 @@
 
   const MapGen = {};
 
+  // Dimensions used before the map-scale increase. Saves created by older
+  // versions keep their original world size so their terrain stays familiar.
+  const LEGACY_MAP_SIZES = {
+    broad: { w: 160, h: 120 },
+    vast: { w: 224, h: 164 },
+    endless: { w: 300, h: 214 }
+  };
+  MapGen.legacySize = (mapSize) => LEGACY_MAP_SIZES[mapSize] || null;
+
   MapGen.generate = function (settings, onProgress) {
     const size = D.MAP_SIZES[settings.mapSize] || D.MAP_SIZES.vast;
-    const w = size.w, h = size.h;
+    const w = settings.worldW || size.w;
+    const h = settings.worldH || size.h;
     const seed = String(settings.seed == null ? Date.now() : settings.seed);
     const world = new World(w, h, seed);
     const seedNum = U.hashString(seed);
@@ -377,7 +387,7 @@
           const nx = s.x + dx, ny = s.y + dy;
           if (!world.inBounds(nx, ny)) continue;
           const wobble = 0.65 + noiseClear.value(nx * 0.55, ny * 0.55) * 1.25;
-          if (Math.hypot(dx, dy) > 3.35 + wobble * 0.28) continue;
+          if (Math.hypot(dx, dy) > 4.3 + wobble * 0.3) continue;
           const i = ny * w + nx;
           if (world.terrain[i] === 0 || world.terrain[i] === 1 || world.terrain[i] === 2) continue;
           if (world.terrain[i] === 6) world.terrain[i] = 5;
@@ -403,10 +413,11 @@
           }
         } else if (t === 5) {
           const roll = rngNodes.next();
-          if (roll < 0.028) world.addNode('iron', x, y, rngNodes.float(0.65, 1));
-          else if (roll < 0.04) world.addNode('silver', x, y, rngNodes.float(0.6, 1));
-          else if (roll < 0.045) world.addNode('gold', x, y, rngNodes.float(0.5, 0.95));
-          else if (roll < 0.068) world.addNode('berry', x, y, rngNodes.float(0.5, 0.9));
+          // Ore seams are deliberately scarce; most hills are just hills.
+          if (roll < 0.004) world.addNode('iron', x, y, rngNodes.float(0.65, 1));
+          else if (roll < 0.0052) world.addNode('silver', x, y, rngNodes.float(0.6, 1));
+          else if (roll < 0.0058) world.addNode('gold', x, y, rngNodes.float(0.5, 0.95));
+          else if (roll < 0.0288) world.addNode('berry', x, y, rngNodes.float(0.5, 0.9));
         }
         if (rngNodes.chance(0.0009) && t === 4) world.addNode('berry', x, y, 0.8);
       }
@@ -442,9 +453,24 @@
       for (let i = 0; i < 7; i++) ringPoint(3.4, 7.5, 'tree');
       for (let i = 0; i < 3; i++) ringPoint(3, 6.5, 'berry');
       ringPoint(6.5, 10, 'iron');
-      if (rngNodes.chance(0.5)) ringPoint(8, 12, 'silver');
-      if (rngNodes.chance(0.25)) ringPoint(9, 13, 'gold');
+      if (rngNodes.chance(0.35)) ringPoint(8, 12, 'silver');
+      if (rngNodes.chance(0.12)) ringPoint(9, 13, 'gold');
     }
+    // Keep the rare ores rare, but never let a seed produce a world with no
+    // silver or gold at all.
+    const ensureOre = (type) => {
+      if (world.nodes.some((n) => n.alive && n.type === type)) return;
+      for (let tries = 0; tries < 600; tries++) {
+        const x = rngNodes.int(2, w - 3), y = rngNodes.int(2, h - 3);
+        if (world.terrain[y * w + x] !== 5 || world.nodeAt(x, y)) continue;
+        if (world.starts.some((st) => U.dist(st.x, st.y, x, y) <= 3)) continue;
+        world.addNode(type, x, y, 0.7);
+        return;
+      }
+    };
+    ensureOre('iron');
+    ensureOre('silver');
+    ensureOre('gold');
     if (onProgress) onProgress(0.84);
 
     // A few extra berry patches near forests to make gathering natural.

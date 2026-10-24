@@ -39,6 +39,11 @@
     food: 45, wood: 35, stone: 8, ironOre: 0, goldOre: 0, silverOre: 0,
     herb: 3, leather: 2, iron: 0, gold: 0, silver: 0, coin: 8
   };
+  // Trade caravans: the player may choose a delivery window within these bounds.
+  D.TRADE_TERM = { min: 20, max: 120, default: 45 };
+  // Loyalty below this level can boil over into independence; zero always does.
+  D.INDEPENDENCE = { threshold: 25, baseChance: 0.003, maxChance: 0.09, shortageBonus: 0.006 };
+
   D.WAREHOUSE_STORAGE = [null,
     { food: 150, wood: 150, stone: 105, ironOre: 45, goldOre: 25, silverOre: 35, herb: 28, leather: 28, iron: 40, gold: 18, silver: 28, coin: 90 },
     { food: 290, wood: 290, stone: 205, ironOre: 85, goldOre: 45, silverOre: 65, herb: 52, leather: 52, iron: 75, gold: 32, silver: 50, coin: 170 },
@@ -162,22 +167,22 @@
     cat: 'gov', name: '村庄大厅', foot: [3, 3], unique: true, maxLevel: 4,
     cost: [null, null,
       { food: 80, wood: 180, stone: 120 },
-      { food: 180, wood: 320, stone: 260, coin: 35 },
+      { food: 180, wood: 330, stone: 260 },
       { food: 300, wood: 500, stone: 420, iron: 50, coin: 90 }],
     buildDays: [0, 0, 14, 25, 38],
-    hp: [0, 1500, 2500, 4000, 6500], radius: [0, 9, 12, 16, 20], popBonus: [0, 6, 9, 13, 20],
+    hp: [0, 1500, 2500, 4000, 6500], radius: [0, 12, 17, 23, 30], popBonus: [0, 6, 9, 13, 20],
     levelNames: ['', '村庄大厅', '镇长大厅', '市政厅', '王宫'],
     desc: '定居点的核心与权力象征。王宫每个阵营只能拥有一座。',
     effect: '决定定居点阶段、领地范围与人口基础上限。升级后需重新建造。'
   });
   building('house', {
     cat: 'gov', name: '民宅', foot: [2, 2], baseCost: { wood: 34, stone: 6 }, baseDays: 3, baseHp: 210,
-    popByLevel: [0, 3, 4, 6, 8], growthDays: [0, 11, 9, 7, 5],
-    desc: '为臣民提供居所，提升人口上限，并会随着时间孕育新的居民。',
-    effect: '每座民宅独立增长人口；人口总数包括所有居民和士兵。'
+    popByLevel: [0, 3, 4, 6, 8], growthDays: [0, 18, 15, 12, 9],
+    desc: '为臣民提供居所，提升人口上限，并会随着时间孕育新的居民。每个定居点的民宅数量受阶段限制。',
+    effect: '每座民宅各自独立地增长人口；人口总数包括所有居民和士兵。升级定居点可提高民宅上限。'
   });
   building('lumber', {
-    cat: 'resource', name: '伐木场', foot: [2, 2], baseCost: { wood: 48, stone: 12 }, baseDays: 4, baseHp: 300,
+    cat: 'resource', name: '伐木场', foot: [2, 2], baseCost: { wood: 48 }, baseDays: 4, baseHp: 300,
     slots: [0, 2, 3, 4, 5], requires: { type: 'tree', range: 3, label: '树林' },
     prod: { wood: 5.2 }, prodMul: [0, 1, 1.24, 1.5, 1.82], regenBoost: [0, 2, 2.25, 2.5, 2.8],
     desc: '必须建于树林旁。工人进入后会持续采伐附近的森林，并使附近树林的再生速度大幅加快。',
@@ -205,7 +210,7 @@
     effect: '提高附近浆果丛的再生速度，并稳定产出草药。'
   });
   building('quarry', {
-    cat: 'resource', name: '采石场', foot: [3, 2], baseCost: { wood: 42, stone: 0 }, baseDays: 5, baseHp: 360,
+    cat: 'resource', name: '采石场', foot: [3, 2], baseCost: { wood: 42 }, baseDays: 5, baseHp: 360,
     slots: [0, 2, 3, 4, 5], prod: { stone: 1.55 }, prodMul: [0, 1, 1.18, 1.4, 1.65],
     desc: '建于空地，开采石料。只需木材即可搭起采石场，石材取之不尽，但开采缓慢。靠近高山时，开采速度提高 50%。',
     effect: '靠近高山有额外产量加成。修建高级建筑与墙体需要大量石材。'
@@ -374,14 +379,35 @@
   });
   D.BUILD = B;
 
+  // Houses are deliberately capped per settlement; upgrading the hall raises
+  // the cap so a village cannot become a metropolis of cottages.
+  D.HOUSE_LIMIT = [0, 4, 8, 12, 16];
+  // Upgrading an existing building costs less than raising a new one at the
+  // same level (the old structure, foundations and land are already there).
+  D.UPGRADE_COST_RATIO = 0.6;
+
   D.buildingCost = (def, level) => {
     if (def.cost && def.cost[level]) return Object.assign({}, def.cost[level]);
     if (def.cost || def.id === 'hall') return null;
     const mul = COST_MUL[level] || 1;
     const out = {};
-    for (const [k, v] of Object.entries(def.baseCost || {})) out[k] = Math.max(1, Math.round(v * mul));
+    for (const [k, v] of Object.entries(def.baseCost || {})) {
+      if (!(v > 0)) continue;
+      out[k] = Math.max(1, Math.round(v * mul));
+    }
     return out;
   };
+  D.upgradeCost = (def, level) => {
+    const base = D.buildingCost(def, level);
+    if (!base) return null;
+    const out = {};
+    for (const [k, v] of Object.entries(base)) {
+      if (!(v > 0)) continue;
+      out[k] = Math.max(1, Math.round(v * D.UPGRADE_COST_RATIO));
+    }
+    return out;
+  };
+  D.houseLimit = (stage) => D.HOUSE_LIMIT[U.clamp(stage || 1, 1, 4)] || 0;
   D.buildingDays = (def, level) => {
     if (def.buildDays && def.buildDays[level] != null) return def.buildDays[level];
     if (def.id === 'hall') return 10;
@@ -608,9 +634,9 @@
     legendary: { name: '国王', label: '传奇', aiEco: 1.55, aiAggro: 1.8, aiStart: 1.35, graceDays: 45, desc: 'AI拥有显著经济优势，45天后便会寻找猎物。' }
   };
   D.MAP_SIZES = {
-    broad: { name: '广袤', w: 160, h: 120, desc: '适合初次游玩 · 3–4 个阵营' },
-    vast: { name: '辽阔', w: 224, h: 164, desc: '完整的战争世界 · 推荐' },
-    endless: { name: '无垠', w: 300, h: 214, desc: '漫长史诗 · 对电脑要求较高' }
+    broad: { name: '广袤', w: 200, h: 150, desc: '适合初次游玩 · 3–4 个阵营' },
+    vast: { name: '辽阔', w: 280, h: 205, desc: '完整的战争世界 · 推荐' },
+    endless: { name: '无垠', w: 380, h: 270, desc: '漫长史诗 · 对电脑要求较高' }
   };
 
   // ---------- Realm / AI name helpers ----------

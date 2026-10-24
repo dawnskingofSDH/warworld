@@ -20,7 +20,7 @@
     if (def.buildMode === 'line' || def.buildOutside) return { ok: false, error: '此类工程需使用拖拽建造' };
     if ((settlement.stage || 1) < (def.minLevel || 1)) return { ok: false, error: `需要定居点达到${D.STAGE_NAMES[def.minLevel]}阶段` };
     if (opts.factionId && settlement.owner !== opts.factionId) return { ok: false, error: '这不是你的定居点' };
-    const level = WW.levelForPlacement(def, settlement);
+    const level = WW.levelForPlacement(def, settlement, opts.level);
     const result = this.requirementCheck(def, x, y, settlement, opts.ignoreCost, level);
     if (!result.ok) return result;
     const cost = result.cost;
@@ -57,7 +57,7 @@
     } else {
       return { ok: false, error: '未知工程' };
     }
-    const level = defId === 'wall' ? WW.levelForPlacement(def, settlement) : 1;
+    const level = defId === 'wall' ? WW.levelForPlacement(def, settlement, opts.level) : 1;
     if ((settlement.stage || 1) < (def.minLevel || 1)) return { ok: false, error: '定居点阶段不足' };
     const cost = D.buildingCost(def, level);
     if (!opts.ignoreCost && !this.canAfford(settlement, cost)) return { ok: false, error: '资源不足', cost, level };
@@ -109,7 +109,10 @@
     const settlement = this.getSettlement(settlementId);
     const faction = settlement && this.getFaction(settlement.owner);
     if (!faction) return { ok: false, error: '无效阵营' };
-    const preview = this.canPlaceBuilding(defId, settlementId, x, y, { factionId: opts.requireOwner ? faction.id : undefined });
+    const preview = this.canPlaceBuilding(defId, settlementId, x, y, {
+      factionId: opts.requireOwner ? faction.id : undefined,
+      level: opts.level
+    });
     if (!preview.ok) return preview;
     if (opts.forbidPlayer && faction.isPlayer) return { ok: false, error: '不适用于玩家' };
     if (!this._displaceUnitsInFootprint(x, y, preview.def.foot[0], preview.def.foot[1])) return { ok: false, error: '此处有单位，无法清出空间' };
@@ -139,7 +142,8 @@
     if (changed) this.path.rebuildAll(this);
   };
 
-  P.commitLine = function (defId, settlementId, tiles) {
+  P.commitLine = function (defId, settlementId, tiles, opts) {
+    opts = opts || {};
     const def = D.BUILD[defId];
     const settlement = this.getSettlement(settlementId);
     if (!def || !settlement) return { ok: false, error: '无效工程' };
@@ -152,7 +156,7 @@
     }
     if (firstError) return { ok: false, built: 0, error: firstError };
     for (const t of tiles) {
-      const chk = this.canPlaceLineTile(defId, settlementId, t.x, t.y);
+      const chk = this.canPlaceLineTile(defId, settlementId, t.x, t.y, { level: opts.level });
       if (!chk.ok) { firstError = chk.error; break; }
       if (!this.payCost(settlement, chk.cost)) { firstError = '资源不足'; break; }
       for (const [k, v] of Object.entries(chk.cost)) spent[k] = (spent[k] || 0) + v;
@@ -280,7 +284,7 @@
       const claiming = this.buildings.some((x) => x !== b && x.owner === b.owner && x.defId === 'hall' && x.upgrade && x.upgrade.targetLevel === 4);
       if ((capital && capital.id !== b.settlementId) || claiming) return { ok: false, error: '每个阵营只能拥有一座王宫' };
     }
-    const cost = D.buildingCost(def, target);
+    const cost = D.upgradeCost(def, target);
     if (!cost) return { ok: false, error: '该建筑无法升级' };
     if (!this.canAfford(settlement, cost)) return { ok: false, error: '资源不足' };
     if (!this.payCost(settlement, cost)) return { ok: false, error: '资源不足' };
@@ -394,6 +398,36 @@
 
   P.repairAtOnce = function (buildingId, unitIds) {
     return this.assignRepairers(unitIds, buildingId);
+  };
+
+  // Player-initiated demolition. Unlike combat destruction this never damages
+  // the occupants and never involves war exhaustion; the player simply gives
+  // up the structure (and any resources already invested in it).
+  P.demolishBuilding = function (buildingId) {
+    const b = this.getBuilding(buildingId);
+    if (!b || b.dead) return { ok: false, error: '建筑不存在' };
+    if (b.owner !== this.playerFactionId) return { ok: false, error: '只能拆除自己的建筑' };
+    if (b.defId === 'hall') return { ok: false, error: '定居点大厅不能拆除。失去大厅会让定居点失去核心。' };
+    const settlement = this.getSettlement(b.settlementId);
+    if (!settlement || settlement.ruined) return { ok: false, error: '建筑没有有效的定居点' };
+    const center = this.buildingCenter(b);
+    const w = b.def.foot[0], h = b.def.foot[1];
+    this._ejectOccupants(b, false);
+    b.dead = true;
+    b.demolishedAt = this.timeDays;
+    if (!this._displaceUnitsInFootprint(b.x, b.y, w, h)) {
+      b.dead = false;
+      return { ok: false, error: '建筑周围没有空间安置单位，无法拆除' };
+    }
+    this.addEffect('ruin', center.x, center.y, 1.2, { color: '#635b4c' });
+    this.path.rebuildAll(this);
+    this.refreshNodeBoosts();
+    this.notify(`你下令拆除了「${D.buildingName(b.def, b.level)}」。建筑已永久消失，投入的资源不会返还。`, 'build', { settlementId: settlement.id });
+    this.sfx('collapse', center.x, center.y);
+    this.emit('buildingDemolished', b);
+    this._cleanupDead();
+    this._cleanupOrphanReferences();
+    return { ok: true, building: b };
   };
 
   // =========================================================
@@ -582,7 +616,7 @@
   // =========================================================
   // Colonisation
   // =========================================================
-  P.COLONY_COST = { food: 90, wood: 110, stone: 50, coin: 20 };
+  P.COLONY_COST = { food: 100, wood: 120, stone: 55 };
 
   P.canFoundSettlement = function (originSettlementId, x, y, factionId) {
     const origin = this.getSettlement(originSettlementId);
@@ -590,7 +624,7 @@
     if (factionId && origin.owner !== factionId) return { ok: false, error: '不是你的定居点' };
     const faction = this.getFaction(origin.owner);
     if (!faction) return { ok: false, error: '无效阵营' };
-    if (!this.canAfford(origin, this.COLONY_COST)) return { ok: false, error: '资源不足：需 90 食物、110 木材、50 石材、20 银币', cost: this.COLONY_COST };
+    if (!this.canAfford(origin, this.COLONY_COST)) return { ok: false, error: '资源不足：需 100 食物、120 木材、55 石材', cost: this.COLONY_COST };
     if (this.livingPopulation(faction.id) + 3 > this.factionPopCap(faction.id)) return { ok: false, error: '需要至少 3 个空余人口容量' };
     const distToOrigin = U.dist(origin.x, origin.y, x, y);
     if (distToOrigin > 48) return { ok: false, error: '距离原定居点太远（最多 48 格）' };
@@ -599,7 +633,7 @@
       const d = U.dist(s.x, s.y, x, y);
       if (d < 16) return { ok: false, error: '与其他定居点距离太近（至少 16 格）' };
       const hall = this.primaryHall(s);
-      const radius = hall && hall.complete ? (hall.def.radius[hall.level] || 9) : 9;
+      const radius = hall && hall.complete ? (hall.def.radius[hall.level] || 12) : 12;
       if (d < radius + 3) return { ok: false, error: '此地属于其他定居点的领地' };
     }
     for (let yy = y - 1; yy <= y + 1; yy++) {
@@ -891,6 +925,40 @@
       n++;
     }
     return { ok: n > 0, count: n };
+  };
+
+  // =========================================================
+  // Dismissal (free population)
+  // =========================================================
+  P.disbandUnits = function (unitIds) {
+    const ids = Array.isArray(unitIds) ? unitIds : [unitIds];
+    const owned = [];
+    let blockedShip = false;
+    for (const id of ids) {
+      const u = this.getUnit(id);
+      if (!u || u.dead || u.owner !== this.playerFactionId) continue;
+      if (u.isShip && (u.passengers || []).length) { blockedShip = true; continue; }
+      owned.push(u);
+    }
+    if (!owned.length) {
+      return { ok: false, error: blockedShip ? '船上仍有乘客，请先让乘客登陆再遣散船只。' : '没有可以遣散的单位。' };
+    }
+    let count = 0;
+    for (const u of owned) {
+      if (u.shipId) {
+        const ship = this.getUnit(u.shipId);
+        if (ship && ship.passengers) ship.passengers = ship.passengers.filter((id) => id !== u.id);
+        u.shipId = null;
+      }
+      this.cancelUnitActivity(u, false);
+      u.dead = true;
+      u.hp = 0;
+      u._disbanded = true;
+      count++;
+    }
+    this._cleanupDead();
+    this.notify(`${count} 个单位已经离开你的麾下，空出了 ${count} 点人口。`, 'civic');
+    return { ok: true, count, blockedShip };
   };
 
   // =========================================================

@@ -2570,3 +2570,61 @@ kbd { font-size: 11.6px; }
 
 @media (max-width: 1320px) { .unit-card { flex-basis: 112px; } }
 
+
+/* =========================================================
+   Title / settlement HUD / toast stacking refinements
+   ========================================================= */
+.game-title-main {
+  display: block;
+  font-size: clamp(62px, 8.2vw, 142px);
+  line-height: 1.06;
+  letter-spacing: .12em;
+  text-indent: .12em;
+  color: #e9d9ad;
+}
+.game-title-en {
+  margin-top: 12px;
+  font-family: var(--font-title);
+  font-size: clamp(11px, 1.05vw, 16px);
+  letter-spacing: .62em;
+  text-indent: .62em;
+  text-transform: uppercase;
+  color: rgba(201, 178, 124, .72);
+  text-shadow: 0 2px 8px #000;
+}
+
+.realm-title-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.realm-label {
+  flex: 0 0 auto;
+  padding: 1px 4px;
+  border: 1px solid rgba(190, 165, 113, .32);
+  color: #c3ad7d;
+  font-family: var(--font-small);
+  font-size: 8px;
+  letter-spacing: .12em;
+  line-height: 1.5;
+}
+.realm-name { font-size: clamp(17px, 1.5vw, 24px); line-height: 1.12; letter-spacing: .06em; }
+.realm-faction { color: #d4bd87; font-size: 10.5px; }
+.realm-sub .sep { color: rgba(180, 162, 125, .45); }
+
+/* Toasts must stay readable above open modals and subdialogs. */
+.toast-layer { position: fixed; z-index: 340; }
+.toast-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  color: #f0d995;
+  background: rgba(214, 183, 108, .17);
+  border: 1px solid rgba(214, 183, 108, .26);
+  font-size: 10px;
+  line-height: 1.45;
+  vertical-align: 1px;
+}
+.toast-count.hidden { display: none; }
+/* When a book page is open, keep toasts clear of its header text. */
+body.modal-active .toast-layer { top: auto; bottom: 24px; }
+/* Build panel: settlement + build-stage selectors stacked in the header. */
+.build-selectors { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.build-selectors .settlement-selector-wrap { width: 100%; }
+.build-selectors .settlement-selector { flex: 1 1 auto; max-width: 230px; }

@@ -25,6 +25,7 @@
       this.inspectedUnitId = null;
       this.activeSettlementId = null;
       this.buildCategory = 'gov';
+      this.buildLevel = 'max';
       this.placement = null;
       this.modalOpen = false;
       this.modalContext = null;
@@ -46,6 +47,10 @@
         hud: $('#hud'),
         crest: $('#crest-canvas'),
         realmName: $('#realm-name'),
+        realmLabel: $('.realm-label'),
+        realmFaction: $('#realm-faction'),
+        realmRank: $('#realm-rank'),
+        realmPop: $('#realm-pop'),
         realmSub: $('.realm-sub'),
         date: $('#date-label'),
         day: $('#day-label'),
@@ -86,11 +91,14 @@
 
     setGame(game) {
       this.game = game;
+      document.body.classList.remove('modal-active');
+      if (this.refs.toast) this.refs.toast.innerHTML = '';
       this.selection = { unitIds: [], buildingId: null, nodeId: null, settlementId: null };
       this.inspectedUnitId = null;
       document.body.classList.remove('unit-selection-active');
       this.activeSettlementId = game ? (game.ownedSettlements(game.playerFactionId).sort((a, b) => b.stage - a.stage)[0] || {}).id : null;
       this.placement = null;
+      this.buildLevel = 'max';
       this.closeModal();
       this.closeSubdialog();
       this.closeBuild();
@@ -248,13 +256,18 @@
       const g = this.game;
       const p = g.player;
       if (!p) return;
-      const active = g.getSettlement(this.activeSettlementId) || g.ownedSettlements(p.id)[0];
+      let active = g.getSettlement(this.activeSettlementId);
+      if (!active || active.owner !== p.id || active.ruined) active = g.ownedSettlements(p.id)[0] || null;
       if (active) this.activeSettlementId = active.id;
-      this.refs.realmName.textContent = D.realmFullName(p);
+      // The selected settlement is the headline; the realm is the subtitle.
+      this.refs.realmName.textContent = active ? active.name : D.realmFullName(p);
+      this.refs.realmName.title = active ? `${active.name} · ${D.STAGE_NAMES[active.stage] || ''}` : D.realmFullName(p);
+      if (this.refs.realmLabel) this.refs.realmLabel.textContent = active ? '定居点' : '王朝';
+      if (this.refs.realmFaction) this.refs.realmFaction.textContent = p.name;
       const pop = g.livingPopulation(p.id);
       const cap = g.factionPopCap(p.id);
-      this.refs.realmSub.innerHTML = `<span>${D.RANK_NAMES[p.rank] || '流亡'}</span><span class="sep">·</span><span>人口 ${pop}/${cap}</span>` +
-        (active ? `<span class="sep">·</span><span class="active-realm">本城：${esc(active.name)}</span>` : '');
+      if (this.refs.realmRank) this.refs.realmRank.textContent = D.RANK_NAMES[p.rank] || '流亡';
+      if (this.refs.realmPop) this.refs.realmPop.textContent = `人口 ${pop} / ${cap}`;
       this.refs.date.textContent = U.dateLabel(g.timeDays, true);
       this.refs.day.textContent = '第 ' + U.timeToDate(g.timeDays).day + ' 日';
       if (active) {
@@ -267,6 +280,12 @@
           el.title = `${D.RES[k].name} ${fmt(v, 1)} / ${fmt(capV)}`;
           el.classList.toggle('full', v >= capV - 0.01);
           el.classList.toggle('low', v < capV * 0.1);
+        });
+      } else {
+        $$('[data-res-val]', this.refs.resourceBar).forEach((el) => {
+          el.textContent = '—';
+          el.title = '当前没有可管理的定居点';
+          el.classList.remove('full', 'low');
         });
       }
       $$('.speed-btn').forEach((b) => b.classList.toggle('active', Math.abs(parseFloat(b.dataset.speed) - this.app.speed) < 0.01));
@@ -329,16 +348,47 @@
 
     showToast(n) {
       if (!this.refs.toast) return;
+      const text = String(n.text == null ? '' : n.text);
+      if (!text) return;
+      const now = performance.now();
+      // Coalesce identical messages that arrive together: instead of stacking
+      // three "resource depleted" lines, show one line with ×3.
+      const existing = Array.from(this.refs.toast.children).find((el) =>
+        !el.classList.contains('leaving') && el.dataset.baseText === text &&
+        now - Number(el.dataset.lastAt || 0) < 3500);
+      if (existing) {
+        const count = (parseInt(existing.dataset.count, 10) || 1) + 1;
+        existing.dataset.count = String(count);
+        existing.dataset.lastAt = String(now);
+        const counter = existing.querySelector('.toast-count');
+        if (counter) {
+          counter.textContent = '×' + count;
+          counter.classList.remove('hidden');
+        }
+        if (existing._toastTimer) clearTimeout(existing._toastTimer);
+        existing._toastTimer = setTimeout(() => {
+          existing.classList.add('leaving');
+          setTimeout(() => existing.remove(), 450);
+        }, n.important ? 8000 : 5200);
+        return;
+      }
       const div = document.createElement('div');
       div.className = 'toast ' + (n.type || 'info');
-      div.textContent = n.text;
+      div.dataset.baseText = text;
+      div.dataset.count = '1';
+      div.dataset.lastAt = String(now);
+      div.innerHTML = '<span class="toast-text"></span><span class="toast-count hidden"></span>';
+      div.querySelector('.toast-text').textContent = text;
       this.refs.toast.appendChild(div);
-      while (this.refs.toast.children.length > 4) this.refs.toast.firstElementChild.remove();
-      const life = n.important ? 8000 : 5200;
-      setTimeout(() => {
+      while (this.refs.toast.children.length > 4) {
+        const first = this.refs.toast.firstElementChild;
+        if (first._toastTimer) clearTimeout(first._toastTimer);
+        first.remove();
+      }
+      div._toastTimer = setTimeout(() => {
         div.classList.add('leaving');
         setTimeout(() => div.remove(), 450);
-      }, life);
+      }, n.important ? 8000 : 5200);
     }
 
     showSubToast(text) {
@@ -391,7 +441,7 @@
       const def = D.BUILD[card.dataset.build];
       const s = this.game.getSettlement(this.activeSettlementId);
       if (!def || !s) return;
-      const level = WW.levelForPlacement(def, s);
+      const level = def.buildMode === 'line' && def.id !== 'wall' ? 1 : this.getBuildLevel(def, s);
       const cost = D.buildingCost(def, level);
       const costText = cost ? Object.entries(cost).filter(([, v]) => v).map(([k, v]) => `${D.RES[k].name} ${v}`).join(' · ') : '——';
       this.showTooltip(`<div class="tt-title">${D.buildingName(def, level)}</div>
@@ -643,10 +693,17 @@
         this.openBuildingDrawer(b);
         if (this.refs.buildPanel.classList.contains('hidden') === false) this.refreshBuildPanel();
       } else if (info.kind === 'node') {
-        this.selection.unitIds = [];
+        // Keep the selected residents: clearing a node is done from its
+        // drawer, and dropping the selection here made that impossible.
+        this.selection.unitIds = this.selection.unitIds.filter((id) => {
+          const u = this.game.getUnit(id);
+          return u && !u.dead && u.owner === this.game.playerFactionId;
+        });
         this.inspectedUnitId = null;
         this.selection.buildingId = null;
         this.selection.nodeId = info.id;
+        const first = this.game.getUnit(this.selection.unitIds[0]);
+        if (first && first.homeSettlement) this.activeSettlementId = first.homeSettlement;
         this.applySelectionToRenderer();
         this.updateSelectionUI();
         this.openNodeDrawer(this.game.world.nodes.find((n) => n.id === info.id));
@@ -683,6 +740,10 @@
       if (this.selection.unitIds.length && this.selection.unitIds.length <= 1) {
         const u = this.game.getUnit(this.selection.unitIds[0]);
         this.selection.settlementId = u ? u.homeSettlement : this.selection.settlementId;
+      }
+      const first = this.game.getUnit(this.selection.unitIds[0]);
+      if (first && first.homeSettlement && this.game.getSettlement(first.homeSettlement)) {
+        this.activeSettlementId = first.homeSettlement;
       }
       this.applySelectionToRenderer();
       this.updateSelectionUI();
@@ -749,6 +810,7 @@
       if (hasResident) actions += `<button class="cmd-btn" data-cmd="builder">${icon('hammer')}<span>转为建筑工</span></button>`;
       if (hasMerchant) actions += `<button class="cmd-btn" data-cmd="merchant">${icon('coin')}<span>商人货物</span></button>`;
       if (ships.length) actions += `<button class="cmd-btn" data-cmd="unload">${icon('people')}<span>登陆</span></button>`;
+      actions += `<button class="cmd-btn danger" data-cmd="disband">${icon('close')}<span>遣散</span></button>`;
       actions += `<button class="cmd-btn" data-cmd="more">${icon('scroll')}<span>详情</span></button>`;
       this.refs.selectionActions.innerHTML = actions + `<div class="selection-note">右键点击地面移动，点击目标下达命令。<br>中键拖动视野 · 滚轮缩放</div>`;
     }
@@ -789,6 +851,8 @@
       } else if (cmd === 'unload') {
         const ship = units.find((u) => u.isShip);
         if (ship) this.tryUnloadShip(ship);
+      } else if (cmd === 'disband') {
+        this.confirmDisband(units);
       } else if (cmd === 'more') {
         if (units.length === 1) this.openUnitDrawer(units[0], 'detail');
         else this.openArmySelection();
@@ -821,6 +885,12 @@
 
     openBuildingDrawer(b, onlyTab) {
       if (!b) return;
+      // Keep the drawer's action context in sync even when it is opened
+      // programmatically (internal index, construction completion, tests).
+      this.selection.buildingId = b.id;
+      this.selection.nodeId = null;
+      this.selection.settlementId = b.settlementId;
+      this.applySelectionToRenderer();
       const g = this.game;
       const s = g.getSettlement(b.settlementId);
       if (b.owner === g.playerFactionId && s) this.activeSettlementId = s.id;
@@ -862,10 +932,11 @@
           body += `<div class="stat-line"><span class="k">目标</span><span class="v">${esc(up.name)}</span></div>
             <div class="stat-line"><span class="k">工期</span><span class="v">${up.days} 人·日</span></div>
             <div class="cost-chips">${this.costHtml(up.cost, s)}</div>
+            <div class="cooldown-note">升级消耗约为新建同级建筑的 ${Math.round(D.UPGRADE_COST_RATIO * 100)}%。</div>
             <div class="action-row"><button class="action-btn primary" data-act="upgrade-building">升级并派遣工匠</button></div>`;
         } else {
           body += `<div class="stat-line"><span class="k">条件</span><span class="v ${up.error === '资源不足' ? 'bad' : ''}">${esc(up.error)}</span></div>`;
-          if (up.cost) body += `<div class="cost-chips">${this.costHtml(up.cost, s)}</div>`;
+          if (up.cost) body += `<div class="cost-chips">${this.costHtml(up.cost, s)}</div><div class="cooldown-note">升级消耗约为新建同级建筑的 ${Math.round(D.UPGRADE_COST_RATIO * 100)}%。</div>`;
         }
         body += `</div>`;
       }
@@ -936,6 +1007,14 @@
       if (b.defId === 'hall') {
         body += `<div class="drawer-section"><h4>定居点</h4><div class="stat-line"><span class="k">阶段</span><span class="v">${D.STAGE_NAMES[b.level]}</span></div><div class="stat-line"><span class="k">领地半径</span><span class="v">${b.def.radius[b.level]} 格</span></div><div class="stat-line"><span class="k">基础上限</span><span class="v">+${b.def.popBonus[b.level]} 人口</span></div></div>`;
       }
+      if (isOwner) {
+        if (b.defId === 'hall') {
+          body += `<div class="drawer-section"><h4>拆除</h4><div class="nearby-note">定居点大厅是城市的核心，不能拆除。若想迁移，只能通过征服或开拓新的定居点。</div></div>`;
+        } else {
+          const crew = (b.workers || []).length + (b.constructors || []).length + (b.repairers || []).length + (b.patients || []).length;
+          body += `<div class="drawer-section"><h4>拆除</h4><p class="description">拆除后建筑永久消失，已投入的资源不会返还。${crew ? '内部的人员会被安置到附近。' : ''}</p><div class="action-row"><button class="action-btn danger" data-act="demolish-building">拆除${b.complete ? '建筑' : '工地'}</button></div></div>`;
+        }
+      }
       if (b.owner !== g.playerFactionId) body += `<div class="warning-note">这是${f ? D.realmFullName(f) : '其他势力'}的建筑。你可以查看信息，但不能管理它。</div>`;
       body += `<div class="action-row"><button class="action-btn" data-act="focus-building">定位到地图</button>${isOwner ? `<button class="action-btn" data-act="close-drawer">关闭</button>` : `<button class="action-btn" data-act="close-drawer">关闭</button>`}</div>`;
       body += `</div>`;
@@ -952,8 +1031,7 @@
       const g = this.game;
       const info = g.getNodeInfo(node);
       const meta = D.NODES[node.type];
-      const selectedResidents = this.selection.unitIds.map((id) => g.getUnit(id)).filter((u) => u && u.kind === 'resident');
-      const selectedAny = this.selection.unitIds.length > 0;
+      const selectedResidents = this.selection.unitIds.map((id) => g.getUnit(id)).filter((u) => u && u.kind === 'resident' && !u.dead);
       const isGatherable = node.type === 'tree' || node.type === 'berry';
       let body = `<div class="drawer-body">
         <div class="stat-line"><span class="k">资源种类</span><span class="v">${D.RES[meta.resource].name}</span></div>
@@ -975,8 +1053,8 @@
       } else {
         body += `<div class="nearby-note">铁矿、金矿、银矿需要在附近建造矿场。石材由采石场无限开采。</div>`;
       }
-      body += `<div class="action-row"><button class="action-btn danger" data-act="clear-node" ${selectedAny ? '' : 'disabled'}>清除资源点（不可逆）</button></div>`;
-      if (!selectedAny) body += `<div class="nearby-note">需要选中至少一名居民才能清除。资源点清除后无法恢复。</div>`;
+      body += `<div class="action-row"><button class="action-btn danger" data-act="clear-node" ${selectedResidents.length ? '' : 'disabled'}>清除资源点（不可逆）</button></div>`;
+      if (!selectedResidents.length) body += `<div class="nearby-note">需要选中至少一名普通居民才能清除。资源点清除后无法恢复。</div>`;
       body += `</div>
         <div class="action-row"><button class="action-btn" data-act="focus-node">定位到地图</button><button class="action-btn" data-act="close-drawer">关闭</button></div>
       </div>`;
@@ -1053,7 +1131,8 @@
           <button class="action-btn" data-act="unit-stop">停止</button>`;
         if (u.kind === 'resident') body += `<button class="action-btn" data-act="unit-builder">转为建筑工</button>`;
         if (u.def.military) body += `<button class="action-btn" data-act="unit-clinic">进入最近诊所</button>`;
-        body += `</div><div class="nearby-note" style="margin-top:6px">右键地上移动，右键目标下达采集、建造、进入或攻击命令。</div></div>`;
+        body += `<button class="action-btn danger" data-act="unit-disband">遣散单位</button>`;
+        body += `</div><div class="nearby-note" style="margin-top:6px">遣散会让单位永久离开并释放人口。<br>右键地上移动，右键目标下达采集、建造、进入或攻击命令。</div></div>`;
       }
       body += `<div class="action-row"><button class="action-btn" data-act="close-drawer">关闭</button></div></div>`;
       const html = `<div class="drawer-head"><div class="drawer-icon" style="border:0;background:transparent"><canvas width="92" height="70" data-unit-portrait></canvas></div>
@@ -1086,6 +1165,7 @@
         this.openBuildingDrawer(b);
         return;
       }
+      if (act === 'demolish-building' && b) { this.confirmDemolishBuilding(b); return; }
       if (act === 'add-constructor' && b) {
         const idle = this.pickIdleFor(b, 'builder');
         if (!idle) { this.showSubToast('没有空闲的居民或建筑工可以派遣。'); return; }
@@ -1198,6 +1278,7 @@
       if (!u) return;
       if (act === 'unit-focus') { this.renderer.focus(u.x, u.y); return; }
       if (act === 'unit-stop') { const r = g.stopUnits([u.id]); if (r.ok) this.showSubToast('单位已停止。'); return; }
+      if (act === 'unit-disband') { this.confirmDisband([u]); return; }
       if (act === 'unit-builder') { this.confirmConvertBuilders([u]); return; }
       if (act === 'unit-clinic') {
         let best = null, bestD = Infinity;
@@ -1277,6 +1358,9 @@
     refreshBuildPanel() {
       if (!this.refs.buildPanel.classList.contains('hidden')) this.renderBuildPanel();
     }
+    getBuildLevel(def, settlement) {
+      return WW.levelForPlacement(def, settlement, this.buildLevel);
+    }
     renderBuildPanel() {
       if (!this.game) return;
       const g = this.game;
@@ -1295,20 +1379,29 @@
       let cards = '';
       for (const def of defs) {
         const locked = (s.stage || 1) < (def.minLevel || 1);
-        const level = def.buildMode === 'line' && def.id !== 'wall' ? 1 : WW.levelForPlacement(def, s);
+        const level = def.buildMode === 'line' && def.id !== 'wall' ? 1 : this.getBuildLevel(def, s);
         const cost = D.buildingCost(def, level);
         const count = D.BUILD[def.id].unique ? g.settlementBuildings(s.id).filter((x) => x.defId === def.id).length : 0;
         const uniqueFull = def.unique && count > 0;
+        const houseCount = def.id === 'house' ? g.houseCountIn(s.id) : 0;
+        const houseLimit = def.id === 'house' ? g.houseLimitFor(s) : 0;
+        const houseFull = def.id === 'house' && houseCount >= houseLimit;
+        const blocked = locked || uniqueFull || houseFull;
         const affordable = cost ? g.canAfford(s, cost) : true;
         const costHtml = this.costHtml(cost, s);
-        const note = def.buildMode === 'line' ? '拖动建造' : uniqueFull ? '每个定居点限一座' : def.requires ? '需靠近' + (def.requires.label || def.requires.type) : '';
-        cards += `<button class="build-card ${locked || uniqueFull ? 'locked' : ''} ${affordable ? '' : 'unaffordable'}" data-build="${def.id}" ${locked || uniqueFull ? 'disabled' : ''}>
+        const note = def.buildMode === 'line' ? '拖动建造'
+          : houseFull ? `民宅 ${houseCount}/${houseLimit} · 已达上限`
+            : def.id === 'house' ? `民宅 ${houseCount}/${houseLimit}`
+              : uniqueFull ? '每个定居点限一座'
+                : def.requires ? '需靠近' + (def.requires.label || def.requires.type) : '';
+        cards += `<button class="build-card ${blocked ? 'locked' : ''} ${affordable ? '' : 'unaffordable'}" data-build="${def.id}" ${blocked ? 'disabled' : ''}>
            <div class="card-icon"><canvas width="148" height="112" data-build-icon="${def.id}"></canvas></div>
            <h4>${def.name}</h4>
            <div class="card-level">${def.maxLevel === 1 ? '固定阶段' : D.STAGE_NAMES[level]}${def.buildMode === 'line' ? ' · 拖拽' : ''}</div>
            <div class="cost-line">${costHtml}</div>
            <div class="card-days">工期 ${def.buildMode === 'line' ? '即时工程' : D.buildingDays(def, level) + ' 人·日'}${note ? ' · ' + note : ''}</div>
            ${locked ? `<div class="lock-note">${icon('lock')} ${D.STAGE_NAMES[def.minLevel]}阶段解锁</div>` : ''}
+           ${houseFull ? `<div class="lock-note">${icon('lock')} 民宅上限 ${houseLimit} · 升级定居点提高</div>` : ''}
            ${uniqueFull ? `<div class="uniq-mark">已建造</div>` : ''}
          </button>`;
       }
@@ -1324,7 +1417,7 @@
             <div class="crown-copy">
               <div class="eyebrow" style="font-size:8px;color:rgba(88,68,38,.5);letter-spacing:.16em">SEAT OF POWER</div>
               <h4>${D.buildingName(hall.def, hall.level)}</h4>
-              <p>${s.name}的核心。升级大厅可提升定居点阶段，并解锁新的建筑与制度。</p>
+              <p>${s.name}的核心。升级大厅可提升定居点阶段，并解锁新的建筑与制度；升级费用约为新建同级大厅的 ${Math.round(D.UPGRADE_COST_RATIO * 100)}%。</p>
               ${up.ok ? `<div class="crown-cost">${this.costHtml(up.cost, s)}</div><div class="crown-actions"><button class="mini-btn" data-build-hall-select>查看大厅</button><button class="mini-btn primary-ish" data-build-hall-upgrade>升级 · ${up.days} 人·日</button></div>` : `<div class="crown-note">${esc(up.error)}${up.cost ? ' · ' + this.costHtml(up.cost, s) : ''}</div><div class="crown-actions"><button class="mini-btn" data-build-hall-select>查看大厅</button></div>`}
             </div>
           </div>`;
@@ -1335,15 +1428,25 @@
         const freePop = g.factionPopCap(p.id) - g.livingPopulation(p.id);
         colony = `<button class="colony-card" data-build-colony>
           <div class="colony-icon">${icon('flag')}</div>
-          <div><strong>建立新的定居点</strong><span>在 48 格内选择空地，花费 90 食物、110 木材、50 石材、20 银币，并需要 3 个空余人口容量。新定居点将独立运转。当前空余人口：${Math.max(0, freePop)}。</span></div>
+          <div><strong>建立新的定居点</strong><span>在 48 格内选择空地，花费 ${Object.entries(g.COLONY_COST).map(([k, v]) => v + ' ' + D.RES[k].name).join('、')}，并需要 3 个空余人口容量。新定居点将独立运转。当前空余人口：${Math.max(0, freePop)}。</span></div>
         </button>`;
       }
       const idle = g.getPlayerIdleWorkers().length;
       const waitingSites = g.buildings.filter((b) => b.owner === p.id && (!b.complete || b.upgrade || b.converting) && (!b.constructors || !b.constructors.length)).length;
+      const buildStage = U.clamp(s.stage || 1, 1, 4);
+      const selectedBuildLevel = this.buildLevel !== 'max' && parseInt(this.buildLevel, 10) > buildStage ? 'max' : String(this.buildLevel);
+      const buildLevelOptions = [`<option value="max" ${selectedBuildLevel === 'max' ? 'selected' : ''}>当前最高（${D.STAGE_NAMES[buildStage]}）</option>`]
+        .concat(Array.from({ length: buildStage }, (_, i) => {
+          const lvl = i + 1;
+          return `<option value="${lvl}" ${selectedBuildLevel === String(lvl) ? 'selected' : ''}>${D.STAGE_NAMES[lvl]}（${lvl} 级）</option>`;
+        })).join('');
       this.refs.buildPanel.innerHTML = `
         <div class="panel-head">
           <div><div class="eyebrow">CONSTRUCTION · 营造</div><h3>建造</h3>
-            <div class="settlement-selector-wrap"><label>施工定居点</label><select class="settlement-selector" id="build-settlement-select">${settlements.map((x) => `<option value="${x.id}" ${x.id === s.id ? 'selected' : ''}>${esc(x.name)} · ${D.STAGE_NAMES[x.stage]}</option>`).join('')}</select></div>
+            <div class="build-selectors">
+              <div class="settlement-selector-wrap"><label>施工定居点</label><select class="settlement-selector" id="build-settlement-select">${settlements.map((x) => `<option value="${x.id}" ${x.id === s.id ? 'selected' : ''}>${esc(x.name)} · ${D.STAGE_NAMES[x.stage]}</option>`).join('')}</select></div>
+              <div class="settlement-selector-wrap"><label>建造等级</label><select class="settlement-selector" id="build-level-select">${buildLevelOptions}</select></div>
+            </div>
           </div>
           <button class="close-btn" data-build-close>${icon('close')}</button>
         </div>
@@ -1353,12 +1456,12 @@
           <div class="build-work-summary"><span>${icon('people')} 空闲劳力 <b>${idle}</b></span><span>${icon('hammer')} 等待施工 <b>${waitingSites}</b></span><span>木 ${fmt(s.resources.wood)} · 石 ${fmt(s.resources.stone)}</span></div>
           <div class="build-grid">${cards || '<div class="empty-state">本阶段暂无可建造项目。</div>'}</div>
           ${colony}
-          <div class="build-help">定居点内的建筑必须建在金色领地线以内。资源只属于当前定居点；其他定居点的资源不会自动调拨过来。建筑放下后会自动指派一名空闲居民；若无人施工，请选中居民右键点击工地。</div>
+          <div class="build-help">定居点内的建筑必须建在金色领地线以内。资源只属于当前定居点；其他定居点的资源不会自动调拨过来。建筑放下后会自动指派一名空闲居民；若无人施工，请选中居民右键点击工地。顶部的「建造等级」可以选择已解锁的低阶段建筑；民宅数量受定居点阶段限制，升级大厅可提高上限；升级现有建筑比新建同级建筑便宜。</div>
         </div>`;
       $$('[data-build-icon]', this.refs.buildPanel).forEach((cv) => {
         const def = D.BUILD[cv.dataset.buildIcon];
         if (!def) return;
-        const lvl = cv.dataset.buildIcon === 'hall' && g.primaryHall(s) ? g.primaryHall(s).level : WW.levelForPlacement(def, s);
+        const lvl = cv.dataset.buildIcon === 'hall' && g.primaryHall(s) ? g.primaryHall(s).level : this.getBuildLevel(def, s);
         this.renderer.drawBuildingIcon(cv, def.id, lvl, p);
       });
     }
@@ -1395,12 +1498,12 @@
         const def = D.BUILD[defId];
         const s = this.game.getSettlement(this.activeSettlementId);
         if (!def || !s) return;
-        const check = this.game.canPlacePreview(defId, s.id, s.x, s.y);
+        const level = def.buildMode === 'line' && def.id !== 'wall' ? 1 : this.getBuildLevel(def, s);
         if (defId === 'wall' || defId === 'bridge' || defId === 'tunnel' || defId === 'road') {
-          this.startPlacement({ defId, settlementId: s.id, mode: 'line' });
+          this.startPlacement({ defId, settlementId: s.id, mode: 'line', level });
         } else {
-          if (!this.game.canAfford(s, D.buildingCost(def, WW.levelForPlacement(def, s)))) this.showSubToast('资源不足。');
-          this.startPlacement({ defId, settlementId: s.id, mode: 'building' });
+          if (!this.game.canAfford(s, D.buildingCost(def, level))) this.showSubToast('资源不足。');
+          this.startPlacement({ defId, settlementId: s.id, mode: 'building', level });
         }
         return;
       }
@@ -1412,8 +1515,14 @@
     }
 
     onBuildPanelChange(e) {
+      if (e.target.id === 'build-level-select') {
+        this.buildLevel = e.target.value;
+        this.renderBuildPanel();
+        return;
+      }
       if (e.target.id === 'build-settlement-select') {
         this.activeSettlementId = e.target.value;
+        this.buildLevel = 'max';
         this.renderBuildPanel();
         const s = this.game.getSettlement(this.activeSettlementId);
         if (s) this.renderer.focus(s.x, s.y);
@@ -1433,7 +1542,12 @@
       this.refs.drawer.classList.add('hidden');
       this.app.canvas.style.cursor = 'crosshair';
       const def = opts.defId ? D.BUILD[opts.defId] : null;
-      this.refs.placementText.textContent = opts.mode === 'found' ? '选择新定居点的大厅位置' : opts.mode === 'line' ? `拖拽规划${def ? def.name : '工程'}` : `放置${def ? def.name : '建筑'}`;
+      const levelText = def && opts.level && (def.id === 'wall' || def.buildMode !== 'line')
+        ? ` · ${D.STAGE_NAMES[opts.level] || opts.level + ' 级'}` : '';
+      this.refs.placementText.textContent = opts.mode === 'found'
+        ? '选择新定居点的大厅位置'
+        : opts.mode === 'line' ? `拖拽规划${def ? def.name : '工程'}${levelText}`
+          : `放置${def ? def.name : '建筑'}${levelText}`;
       if (opts.mode !== 'line') this.updatePlacementPreview(this.pointer);
       else this.renderer.placement = null;
       this.app.audio?.sfx('click');
@@ -1466,8 +1580,8 @@
         const def = D.BUILD[this.placement.defId];
         if (!def) return;
         const x = Math.round(w.x - def.foot[0] / 2), y = Math.round(w.y - def.foot[1] / 2);
-        const chk = g.canPlacePreview(def.id, s.id, x, y);
-        const level = WW.levelForPlacement(def, s);
+        const level = this.placement.level || this.getBuildLevel(def, s);
+        const chk = g.canPlacePreview(def.id, s.id, x, y, { level });
         this.placement.x = x; this.placement.y = y; this.placement.valid = chk.ok; this.placement.error = chk.error;
         this.renderer.placement = { mode: 'building', defId: def.id, x, y, valid: chk.ok };
         let extra = '';
@@ -1488,7 +1602,7 @@
       const start = this.lineDrag.start;
       const line = U.lineTiles(start.x, start.y, end.x, end.y).slice(0, 60);
       const tiles = line.map((p) => {
-        const chk = g.canPlaceLineTile(def.id, s.id, p.x, p.y);
+        const chk = g.canPlaceLineTile(def.id, s.id, p.x, p.y, { level: this.placement.level });
         return { x: p.x, y: p.y, valid: chk.ok, cost: chk.cost };
       });
       const allValid = tiles.length > 0 && tiles.every((t) => t.valid);
@@ -1503,7 +1617,7 @@
       if (!this.placement || !this.lineDrag) return;
       const tiles = this.placement.tiles || [];
       if (!tiles.length) return;
-      const r = this.game.commitLine(this.placement.defId, this.placement.settlementId, tiles.map((t) => ({ x: t.x, y: t.y })));
+      const r = this.game.commitLine(this.placement.defId, this.placement.settlementId, tiles.map((t) => ({ x: t.x, y: t.y })), { level: this.placement.level });
       if (!r.ok) {
         this.showSubToast(r.error || '无法建造此工程。');
       } else if (r.error) {
@@ -1531,7 +1645,7 @@
       }
       if (this.placement.mode === 'building') {
         if (!this.placement.valid) { this.showSubToast(this.placement.error || '此处无法建造。'); return; }
-        const r = g.placeBuilding(this.placement.defId, this.placement.settlementId, this.placement.x, this.placement.y);
+        const r = g.placeBuilding(this.placement.defId, this.placement.settlementId, this.placement.x, this.placement.y, { level: this.placement.level });
         if (!r.ok) { this.showSubToast(r.error || '无法建造。'); return; }
         this.cancelPlacement();
         if (r.building) {
@@ -1715,6 +1829,57 @@
       });
     }
 
+    confirmDisband(units) {
+      const g = this.game;
+      const own = (units || []).filter((u) => u && !u.dead && u.owner === g.playerFactionId);
+      if (!own.length) { this.showSubToast('没有可以遣散的单位。'); return; }
+      const counts = {};
+      for (const u of own) {
+        const name = u.def ? u.def.name : '单位';
+        counts[name] = (counts[name] || 0) + 1;
+      }
+      const detail = Object.entries(counts).map(([name, n]) => `${esc(name)} ×${n}`).join('、');
+      const blocked = own.filter((u) => u.isShip && (u.passengers || []).length).length;
+      this.showSubdialog(`<h3>遣散单位</h3>
+        <p class="sub-copy">被遣散的单位会永久离开你的麾下，并立即释放所占用的人口。携带的货物会一并失去，此操作不可撤销。</p>
+        <div class="subdialog-info">将遣散：${detail}${blocked ? `<br>其中 ${blocked} 艘船上仍有乘客，需先让乘客登陆。` : ''}</div>
+        <div class="subdialog-error" id="disband-error"></div>
+        <div class="subdialog-actions"><button class="action-btn" data-sub-cancel>取消</button><button class="action-btn danger" data-sub-confirm>确认遣散</button></div>`);
+      this.refs.subBackdrop.querySelector('[data-sub-cancel]').addEventListener('click', () => this.closeSubdialog());
+      this.refs.subBackdrop.querySelector('[data-sub-confirm]').addEventListener('click', () => {
+        const r = g.disbandUnits(own.map((u) => u.id));
+        if (!r.ok) { const el = $('#disband-error'); if (el) el.textContent = r.error; return; }
+        this.closeSubdialog();
+        this.showSubToast(`${r.count} 个单位已经离开，空出了 ${r.count} 点人口。`);
+        this.clearSelection();
+        this.updateHUD(true);
+      });
+    }
+
+    confirmDemolishBuilding(b) {
+      if (!b) return;
+      const g = this.game;
+      if (b.owner !== g.playerFactionId) { this.showSubToast('只能拆除自己的建筑。'); return; }
+      if (b.defId === 'hall') { this.showSubToast('定居点大厅不能拆除。'); return; }
+      const name = D.buildingName(b.def, b.level);
+      const crew = (b.workers || []).length + (b.constructors || []).length + (b.repairers || []).length + (b.patients || []).length;
+      this.showSubdialog(`<h3>拆除「${esc(name)}」</h3>
+        <p class="sub-copy">拆除是不可逆的。建筑会永久消失，已投入的资源不会返还。${crew ? '内部的人员会被安置到建筑附近，不会受到伤害。' : ''}</p>
+        <div class="subdialog-info">${b.complete ? '这是一座已完工的建筑。' : '这是一处尚未完工的工地。'}${b.upgrade ? '当前升级工程也会一并取消。' : ''}${b.defId === 'house' ? '拆除后会腾出本定居点的一处民宅名额。' : ''}</div>
+        <div class="subdialog-error" id="demolish-error"></div>
+        <div class="subdialog-actions"><button class="action-btn" data-sub-cancel>取消</button><button class="action-btn danger" data-sub-confirm>确认拆除</button></div>`);
+      this.refs.subBackdrop.querySelector('[data-sub-cancel]').addEventListener('click', () => this.closeSubdialog());
+      this.refs.subBackdrop.querySelector('[data-sub-confirm]').addEventListener('click', () => {
+        const r = g.demolishBuilding(b.id);
+        if (!r.ok) { const el = $('#demolish-error'); if (el) el.textContent = r.error; return; }
+        this.closeSubdialog();
+        this.showSubToast(`「${name}」已经拆除。`);
+        this.clearSelection();
+        this.updateHUD(true);
+        this.refreshBuildPanel();
+      });
+    }
+
     confirmConvertBuilders(residents) {
       if (!residents || !residents.length) return;
       this.showSubdialog(`<h3>转为建筑工</h3>
@@ -1779,6 +1944,7 @@
       this.refs.drawer.classList.add('hidden');
       this.hideTooltip();
       this.modalOpen = true;
+      document.body.classList.add('modal-active');
       this.modalContext = opts;
       this.refs.modal.className = 'modal' + (opts.wide ? ' wide' : opts.narrow ? ' narrow' : '');
       this.refs.modal.innerHTML = `
@@ -1824,6 +1990,7 @@
     closeModal() {
       if (!this.modalOpen) return;
       this.modalOpen = false;
+      document.body.classList.remove('modal-active');
       this.modalContext = null;
       this.modalOnMount = null;
       this.refs.modal.classList.add('hidden');
@@ -1875,7 +2042,7 @@
         const t = prompt.payload.terms;
         const offer = t.fromB, request = t.fromA;
         if (offer && request) {
-          extra = `<div class="gold-divider"></div><div class="stat-line"><span class="k">对方给予</span><span class="v">${fmt(offer.amount)} ${D.RES[offer.res].name}</span></div><div class="stat-line"><span class="k">你需提供</span><span class="v">${fmt(request.amount)} ${D.RES[request.res].name}</span></div><div class="nearby-note">双方将派商人把货物送到对方集市。若商队被劫杀，贸易将失败。</div>`;
+          extra = `<div class="gold-divider"></div><div class="stat-line"><span class="k">对方给予</span><span class="v">${fmt(offer.amount)} ${D.RES[offer.res].name}</span></div><div class="stat-line"><span class="k">你需提供</span><span class="v">${fmt(request.amount)} ${D.RES[request.res].name}</span></div><div class="stat-line"><span class="k">交付期限</span><span class="v">${t.durationDays || D.TRADE_TERM.default} 天</span></div><div class="nearby-note">双方将派商人把货物送到对方集市。若商队被劫杀或逾期，贸易将失败。</div>`;
         }
       }
       if (prompt.kind === 'allyCall' && prompt.payload) {

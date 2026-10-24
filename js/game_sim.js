@@ -86,6 +86,13 @@
     this._cleanupOrphanReferences();
   };
 
+  // A deterministic per-building random stream. Each house has its own
+  // counter, so houses never share the same roll or birth day.
+  P._houseRandom = function (b) {
+    b.growthRolls = (b.growthRolls || 0) + 1;
+    return U.hashString(`${b.id}|${b.growthRolls}|${this.seed}|house`) / 4294967296;
+  };
+
   P._settlementDay = function (s, faction) {
     const stage = U.clamp(s.stage || 1, 1, 4);
     const upkeep = D.SETTLEMENT_UPKEEP[stage] || {};
@@ -111,27 +118,40 @@
         this.notify(`「${s.name}」缺少${missing.slice(0, 3).join('、')}，稳定度正在下降。`, 'warn', { settlementId: s.id });
       }
     }
-    const target = this.stabilityTarget(s, faction);
-    if (s.stability < target) s.stability = Math.min(target, s.stability + 0.42);
-    else if (s.stability > target) s.stability = Math.max(target, s.stability - 0.72);
+    if (s.stability <= 0) {
+      // A settlement that has already hit zero cannot quietly recover on the
+      // same day; it must face the immediate independence check.
+      s.stability = 0;
+    } else {
+      const target = this.stabilityTarget(s, faction);
+      if (s.stability < target) s.stability = Math.min(target, s.stability + 0.42);
+      else if (s.stability > target) s.stability = Math.max(target, s.stability - 0.72);
+    }
     s.stability = U.clamp(s.stability, 0, 100);
-    if (s.stability <= 15 && faction.isPlayer && (!s._lowStabilityNotifiedAt || this.timeDays - s._lowStabilityNotifiedAt > 8)) {
+    if (s.stability < D.INDEPENDENCE.threshold && faction.isPlayer && (!s._lowStabilityNotifiedAt || this.timeDays - s._lowStabilityNotifiedAt > 8)) {
       s._lowStabilityNotifiedAt = this.timeDays;
-      this.notify(`「${s.name}」的稳定度仅有 ${Math.floor(s.stability)}，长期如此将可能独立。请发放救助金或改善供给。`, 'danger', { important: true, settlementId: s.id });
+      this.notify(`「${s.name}」的稳定度仅有 ${Math.floor(s.stability)}（低于 ${D.INDEPENDENCE.threshold}），每天都有独立的可能。降至 0 会立即独立。请发放救助金或改善供给。`, 'danger', { important: true, settlementId: s.id });
     }
 
-    // Houses rear new residents.
+    // Houses rear new residents. Every house keeps its own growth clock and
+    // rolls its own pace, so a row of houses built on the same day will not
+    // all produce a resident on the same day.
     for (const b of this.buildings) {
       if (b.settlementId !== s.id || b.defId !== 'house' || !b.complete || b.dead) continue;
       const def = b.def, lvl = b.level;
+      const baseDays = (def.growthDays && def.growthDays[lvl]) || 10;
+      if (!(baseDays > 0)) continue;
+      if (b.growthTarget == null) b.growthTarget = baseDays * (0.85 + this._houseRandom(b) * 0.55);
       if (this.livingPopulation(faction.id) >= this.factionPopCap(faction.id)) {
-        b.growthProgress = Math.min(b.growthProgress || 0, (def.growthDays[lvl] || 10));
+        // Freeze instead of filling to the threshold: otherwise every house
+        // would give birth on the first day a new house raises the cap.
         continue;
       }
       if ((s.resources.food || 0) < 4) continue;
-      b.growthProgress = (b.growthProgress || 0) + 1;
-      if (b.growthProgress >= (def.growthDays[lvl] || 10)) {
+      b.growthProgress = (b.growthProgress || 0) + 0.9 + this._houseRandom(b) * 0.2;
+      if (b.growthProgress >= b.growthTarget) {
         b.growthProgress = 0;
+        b.growthTarget = baseDays * (0.85 + this._houseRandom(b) * 0.55);
         const at = this.approachTileForBuilding(b, b.x, b.y) || { x: b.x, y: b.y };
         this._spawnUnit('resident', faction.id, s.id, at.x + 0.5, at.y + 0.5);
         this.removeResource(s, 'food', 4);
@@ -164,11 +184,12 @@
       }
     }
 
-    // Independence risk when a settlement's loyalty reaches zero.
+    // A settlement at zero loyalty breaks away immediately; below the
+    // threshold it only runs a daily risk of doing so.
     if (s.stability <= 0 && faction.isPlayer) {
       if (!s._independenceNotice || this.timeDays - s._independenceNotice > 5) {
         s._independenceNotice = this.timeDays;
-        this.notify(`「${s.name}」的贵族正在密谋独立。立即发放救助金或提供物资！`, 'danger', { important: true, settlementId: s.id });
+        this.notify(`「${s.name}」的稳定度已经归零，贵族与市民正在抛弃你的统治。`, 'danger', { important: true, settlementId: s.id });
       }
     }
   };
@@ -204,7 +225,8 @@
   };
 
   P._borderTensions = function () {
-    if (this.rng.chance(0.35)) return;
+    // Each neighbouring pair rolls independently; there is no shared daily
+    // gate that would make every border flare up on the very same day.
     for (let i = 0; i < this.factions.length; i++) {
       for (let j = i + 1; j < this.factions.length; j++) {
         const a = this.factions[i], b = this.factions[j];
@@ -221,7 +243,7 @@
           if (close) break;
         }
         if (!close) continue;
-        if (this.rng.chance(0.06)) {
+        if (this.rng.chance(0.035)) {
           const cb = { id: this.nextId('cb'), target: b.id, reason: 'border', created: this.timeDays };
           const cb2 = { id: this.nextId('cb'), target: a.id, reason: 'border', created: this.timeDays };
           a.casusBelli.push(cb); b.casusBelli.push(cb2);
@@ -236,12 +258,21 @@
   };
 
   P._checkIndependence = function () {
+    const threshold = D.INDEPENDENCE.threshold;
     for (const s of this.settlements.slice()) {
-      if (s.ruined || s.stability > 0.4) continue;
+      if (s.ruined) continue;
       const faction = this.getFaction(s.owner);
       if (!faction || faction.eliminated) continue;
-      const chance = 0.018 + (s.shortage ? 0.012 : 0);
-      if (!this.rng.chance(chance)) continue;
+      // Zero loyalty means the break is no longer a matter of chance.
+      if (s.stability <= 0) {
+        this._triggerIndependence(s);
+        continue;
+      }
+      if (s.stability >= threshold) continue;
+      const severity = 1 - s.stability / threshold;
+      let chance = D.INDEPENDENCE.baseChance + severity * severity * D.INDEPENDENCE.maxChance;
+      if (s.shortage) chance += D.INDEPENDENCE.shortageBonus;
+      if (!this.rng.chance(U.clamp(chance, 0, 0.25))) continue;
       this._triggerIndependence(s);
     }
   };
@@ -588,6 +619,7 @@
       b.buildRequired = 0;
       b.maxHp = D.buildingHp(b.def, b.level);
       b.hp = b.maxHp;
+      if (b.defId === 'house') { b.growthTarget = null; b.growthProgress = 0; }
       if (b.defId === 'hall' && settlement) {
         settlement.stage = b.level;
         settlement.hallId = b.id;
@@ -615,6 +647,7 @@
     b.buildProgress = b.buildRequired;
     b.buildRequired = 0;
     b.growthProgress = 0;
+    b.growthTarget = null;
     if (settlement && b.defId === 'hall') settlement.stage = b.level;
     if (faction && faction.isPlayer) {
       this.notify(`${D.buildingName(b.def, b.level)}已经落成。`, 'build', { settlementId: b.settlementId });
@@ -1017,7 +1050,11 @@
         u.task = null; u.order = null; u.state = 'idle'; continue;
       }
       if (node.amount <= 0.05) {
-        if (this.getFaction(u.owner) && this.getFaction(u.owner).isPlayer) this.notify('这处资源点暂时枯竭了。它会随时间恢复，也可以让居民清除它。', 'warn');
+        const faction = this.getFaction(u.owner);
+        if (faction && faction.isPlayer && (!node._depletedNotifiedAt || this.timeDays - node._depletedNotifiedAt > 2)) {
+          node._depletedNotifiedAt = this.timeDays;
+          this.notify('这处资源点暂时枯竭了。它会随时间恢复，也可以让居民清除它。', 'warn');
+        }
         u.task = null; u.order = null; u.state = 'idle'; continue;
       }
       const meta = D.NODES[node.type];

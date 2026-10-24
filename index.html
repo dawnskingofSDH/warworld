@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1c221b">
-  <title>Warworld · 战争世界</title>
+  <meta name="description" content="战争世界（Warworld）Demo 0.2：一部完全离线的 2D 中世纪大战略游戏，浏览器直接开玩。">
+  <meta name="application-name" content="战争世界">
+  <title>战争世界</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/main.css">
 </head>
@@ -48,8 +50,8 @@
         <div class="realm-block">
           <canvas id="crest-canvas" width="94" height="108" aria-label="家族纹章"></canvas>
           <div class="realm-text">
-            <div id="realm-name" class="realm-name">无名王朝</div>
-            <div class="realm-sub"><span id="realm-rank">伯国</span><span class="sep">·</span><span id="realm-pop">人口 5 / 6</span></div>
+            <div class="realm-title-row"><span class="realm-label">定居点</span><span id="realm-name" class="realm-name">无名王朝</span></div>
+            <div class="realm-sub"><span id="realm-faction" class="realm-faction">无名王朝</span><span class="sep">·</span><span id="realm-rank">伯国</span><span class="sep">·</span><span id="realm-pop">人口 5 / 6</span></div>
             <div class="realm-date"><span id="date-label">主历 1 年 · 春</span><span id="day-label">第 1 日</span></div>
           </div>
         </div>
@@ -103,12 +105,13 @@
 
       <div id="build-panel" class="side-panel hidden"></div>
 
-      <div id="toast-layer" class="toast-layer" aria-live="polite"></div>
       <div id="paused-indicator" class="paused-indicator hidden">时间暂停</div>
       <div id="waiting-prompt" class="waiting-prompt hidden">等待你的决定</div>
       <div id="zoom-hint" class="zoom-hint">滚轮缩放 · 中键拖动地图 · 方向键移动视野</div>
     </div>
   </div>
+
+  <div id="toast-layer" class="toast-layer" aria-live="polite"></div>
 
   <main id="menu-screen" class="screen menu-screen">
     <div class="menu-scene" aria-hidden="true">
@@ -232,8 +235,8 @@
     <div class="menu-overlay">
       <div class="menu-brand">
         <div class="eyebrow"><span class="line"></span>ANNO DOMINI · 王国纪元<span class="line"></span></div>
-        <h1 class="game-title"><span>WAR</span><em>WORLD</em></h1>
-        <div class="game-title-cn">战争世界</div>
+        <h1 class="game-title game-title-main">战争世界</h1>
+        <div class="game-title-en">WARWORLD</div>
         <div class="title-ornament"><span></span><i>✦</i><span></span></div>
         <p class="tagline">在漫长的年代里，以一村之火，铸万世之冠。</p>
         <p class="menu-description">资源、内政、外交与战争交织成一部属于你的中世纪编年史。世界辽阔，时间是唯一的敌人。</p>
@@ -247,7 +250,7 @@
           <button class="text-btn hidden" id="btn-menu-load">读取最近存档</button>
         </div>
         <div class="menu-footer">
-          <span>离线单机</span><span class="sep">·</span><span>长期战略</span><span class="sep">·</span><span id="menu-version">编年史 I</span>
+          <span>离线单机</span><span class="sep">·</span><span>长期战略</span><span class="sep">·</span><span id="menu-version">Demo 0.2</span>
         </div>
       </div>
       <div class="menu-aside">
@@ -296,9 +299,9 @@
           <div class="setup-group">
             <div class="section-label">世界之幅</div>
             <div class="choice-grid map-choice" id="map-size-options">
-              <button class="choice-card" data-value="broad"><strong>广袤</strong><span>160 × 120</span><small>适合初次游玩</small></button>
-              <button class="choice-card active" data-value="vast"><strong>辽阔</strong><span>224 × 164</span><small>推荐 · 完整世界</small></button>
-              <button class="choice-card" data-value="endless"><strong>无垠</strong><span>300 × 214</span><small>漫长史诗</small></button>
+              <button class="choice-card" data-value="broad"><strong>广袤</strong><span>200 × 150</span><small>适合初次游玩</small></button>
+              <button class="choice-card active" data-value="vast"><strong>辽阔</strong><span>280 × 205</span><small>推荐 · 完整世界</small></button>
+              <button class="choice-card" data-value="endless"><strong>无垠</strong><span>380 × 270</span><small>漫长史诗</small></button>
             </div>
           </div>
           <div class="setup-row">

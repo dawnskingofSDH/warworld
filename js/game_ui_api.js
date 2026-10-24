@@ -6,16 +6,17 @@
   const D = WW.D;
   const P = WW.Game.prototype;
 
-  P.canPlacePreview = function (defId, settlementId, x, y) {
+  P.canPlacePreview = function (defId, settlementId, x, y, opts) {
+    opts = opts || {};
     const f = this.player;
     const settlement = this.getSettlement(settlementId);
     if (!f || !settlement || settlement.owner !== f.id) return { ok: false, error: '这不是你的定居点' };
     const def = D.BUILD[defId];
     if (!def) return { ok: false, error: '未知建筑' };
     if (def.buildMode === 'line') {
-      return this.canPlaceLineTile(defId, settlementId, x, y, { factionId: f.id });
+      return this.canPlaceLineTile(defId, settlementId, x, y, { factionId: f.id, level: opts.level });
     }
-    return this.canPlaceBuilding(defId, settlementId, x, y, { factionId: f.id });
+    return this.canPlaceBuilding(defId, settlementId, x, y, { factionId: f.id, level: opts.level });
   };
 
   P.getUpgradeInfo = function (b) {
@@ -32,7 +33,7 @@
       const cap = this.capitalOf(b.owner);
       if (cap && cap.id !== settlement.id) return { ok: false, error: '每个阵营只能拥有一座王宫' };
     }
-    const cost = D.buildingCost(b.def, target);
+    const cost = D.upgradeCost(b.def, target);
     if (!cost) return { ok: false, error: '无法升级' };
     if (!this.canAfford(settlement, cost)) return { ok: false, error: '资源不足', cost };
     return { ok: true, target, cost, name: D.buildingName(b.def, target), days: D.buildingDays(b.def, target), hp: D.buildingHp(b.def, target) };

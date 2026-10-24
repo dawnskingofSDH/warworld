@@ -135,7 +135,7 @@
       const hasFood = s.resources.food > 40 || foodProd > 0;
       const hasWood = s.resources.wood > 35 || woodProd > 0;
       const target = Math.min(4, hall.level + 1);
-      if (hall.level < 4 && hasFood && hasWood && s.stability > 52 && this.canAfford(s, D.buildingCost(hall.def, target) || {}) &&
+      if (hall.level < 4 && hasFood && hasWood && s.stability > 52 && this.canAfford(s, D.upgradeCost(hall.def, target) || {}) &&
         !this.buildings.some((b) => b.owner === f.id && b.defId === 'hall' && b.upgrade)) {
         const targetLevel = hall.level + 1;
         if (targetLevel === 4 && this.capitalOf(f.id)) {
@@ -221,7 +221,7 @@
       if (candidates.length) {
         candidates.sort((a, b) => (b.defId === 'lumber' || b.defId === 'farm' || b.defId === 'warehouse' ? 1 : 0) - (a.defId === 'lumber' || a.defId === 'farm' || a.defId === 'warehouse' ? 1 : 0));
         const b = candidates[0];
-        const cost = D.buildingCost(b.def, b.level + 1);
+        const cost = D.upgradeCost(b.def, b.level + 1);
         if (cost && this.canAfford(s, cost)) {
           const r = this.startUpgrade(b.id);
           if (r.ok) return;
@@ -247,14 +247,14 @@
 
   P._aiFindNodeInSettlement = function (s, type) {
     const hall = this.primaryHall(s);
-    const rad = hall && hall.complete ? (hall.def.radius[hall.level] || 9) : 9;
+    const rad = hall && hall.complete ? (hall.def.radius[hall.level] || 12) : 12;
     return this.world.nodes.find((n) => n.alive && n.type === type && U.dist(n.x, n.y, s.x, s.y) <= rad + 1) || null;
   };
 
   P._aiFindBuildSite = function (f, s, def, level) {
     const center = this.settlementCenter(s);
     const hall = this.primaryHall(s);
-    const radius = hall && hall.complete ? (hall.def.radius[hall.level] || 9) : 9;
+    const radius = hall && hall.complete ? (hall.def.radius[hall.level] || 12) : 12;
     const w = def.foot[0], h = def.foot[1];
     const tryAt = (x, y) => {
       x = Math.round(x); y = Math.round(y);
@@ -681,7 +681,8 @@
     const terms = {
       a: player.id, b: f.id,
       fromA: { res: request.res, amount: requestAmount, market: request.market.id },
-      fromB: { res: offer.res, amount: offerAmount, market: offer.market.id }
+      fromB: { res: offer.res, amount: offerAmount, market: offer.market.id },
+      durationDays: this.rng.int(40, 70)
     };
     this.addPrompt('tradeOffer', f.id, { terms }, {
       pause: true, title: '来自远方的商队',

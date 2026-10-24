@@ -46,7 +46,9 @@
       this.game = game;
       this.vw = 1;
       this.vh = 1;
-      this.dpr = 1;
+      this.baseDpr = Math.min(2, window.devicePixelRatio || 1);
+      this.dpr = this.baseDpr;
+      this.chunkScale = 1;
       this.camera = { x: game ? game.world.w / 2 : 0, y: game ? game.world.h / 2 : 0, zoom: 1.22 };
       this.chunks = new Map();
       this.anim = 0;
@@ -83,15 +85,27 @@
     resize() {
       this.vw = window.innerWidth;
       this.vh = window.innerHeight;
-      this.dpr = Math.min(2, window.devicePixelRatio || 1);
-      this.canvas.width = Math.floor(this.vw * this.dpr);
-      this.canvas.height = Math.floor(this.vh * this.dpr);
-      this.canvas.style.width = this.vw + 'px';
-      this.canvas.style.height = this.vh + 'px';
-      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      this.ctx.imageSmoothingEnabled = true;
-      this.ctx.imageSmoothingQuality = 'high';
+      this.baseDpr = Math.min(2, window.devicePixelRatio || 1);
+      this._applyResolution(true);
       this.clampCamera();
+    }
+
+    // Zoomed-out views do not need a retina backing store. Rendering at a
+    // lower internal resolution is the single biggest win when the whole
+    // world is on screen, and it also makes terrain chunk compositing cheap.
+    _applyResolution(force) {
+      const z = this.camera ? this.camera.zoom : 1.22;
+      const target = z < 0.8 ? Math.min(1, this.baseDpr) : this.baseDpr;
+      if (force || target !== this.dpr) {
+        this.dpr = target;
+        this.canvas.width = Math.floor(this.vw * this.dpr);
+        this.canvas.height = Math.floor(this.vh * this.dpr);
+        this.canvas.style.width = this.vw + 'px';
+        this.canvas.style.height = this.vh + 'px';
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        this.ctx.imageSmoothingEnabled = true;
+      }
+      this.ctx.imageSmoothingQuality = z < 1 ? 'low' : 'high';
     }
 
     setMinimapCanvas(canvas) {
@@ -190,19 +204,47 @@
     // =========================================================
     // Terrain chunks
     // =========================================================
+    // At low zoom the chunks are displayed much smaller than their native
+    // 512px size. Rasterising them at a matching lower resolution avoids
+    // expensive per-frame minification filtering (a major source of stutter
+    // when the map is zoomed out).
+    _terrainScale() {
+      // Two variants are enough: native resolution for most zooms, and a
+      // half-resolution cache once individual tiles become very small.
+      return this.camera.zoom < 0.62 ? 0.5 : 1;
+    }
+
     _chunkCanvas(cx, cy) {
-      const key = cx + ',' + cy;
+      const scale = this._terrainScale();
+      this.chunkScale = scale;
+      // Keep low- and high-resolution variants side by side in the LRU so
+      // crossing a zoom threshold does not force every chunk to be rebuilt.
+      const key = cx + ',' + cy + '@' + scale;
       let cv = this.chunks.get(key);
       if (cv) {
         this.chunks.delete(key);
         this.chunks.set(key, cv);
         return cv;
       }
-      cv = document.createElement('canvas');
-      cv.width = CHUNK * TILE;
-      cv.height = CHUNK * TILE;
-      const c = cv.getContext('2d');
-      this.drawTerrainChunk(c, cx, cy);
+      // Draw the painterly chunk at full resolution, then downsample it once.
+      // Rasterising the vectors directly at 50% would turn most 1px strokes
+      // and transitions into invisible subpixels and flatten the map.
+      const full = document.createElement('canvas');
+      full.width = CHUNK * TILE;
+      full.height = CHUNK * TILE;
+      const fc = full.getContext('2d');
+      this.drawTerrainChunk(fc, cx, cy);
+      if (scale === 1) {
+        cv = full;
+      } else {
+        cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(CHUNK * TILE * scale));
+        cv.height = Math.max(1, Math.round(CHUNK * TILE * scale));
+        const c = cv.getContext('2d');
+        c.imageSmoothingEnabled = true;
+        c.imageSmoothingQuality = 'high';
+        c.drawImage(full, 0, 0, cv.width, cv.height);
+      }
       this.chunks.set(key, cv);
       if (this.chunks.size > CACHE_MAX) {
         const first = this.chunks.keys().next().value;
@@ -698,6 +740,7 @@
     // =========================================================
     render(now) {
       if (!this.game) return;
+      this._applyResolution(false);
       const ctx = this.ctx;
       const t = dateSeason(this.game.timeDays);
       this.anim = now / 1000;
@@ -840,9 +883,11 @@
       for (let cy = r0; cy <= r1; cy++) {
         for (let cx = c0; cx <= c1; cx++) {
           const cv = this._chunkCanvas(cx, cy);
-          const sx = off.x + cx * CHUNK * z;
-          const sy = off.y + cy * CHUNK * z;
-          this.ctx.drawImage(cv, sx, sy, CHUNK * z + 0.6, CHUNK * z + 0.6);
+          const sx = Math.round(off.x + cx * CHUNK * z);
+          const sy = Math.round(off.y + cy * CHUNK * z);
+          const size = CHUNK * z;
+          if (Math.abs(cv.width - size) <= 1) this.ctx.drawImage(cv, sx, sy);
+          else this.ctx.drawImage(cv, sx, sy, size + 0.6, size + 0.6);
         }
       }
     }
@@ -855,8 +900,11 @@
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       const time = this.anim;
-      for (let y = vis.y0; y <= vis.y1; y += 1) {
-        for (let x = vis.x0; x <= vis.x1; x += 1) {
+      // Individual wavelets are invisible when zoomed out; sampling every
+      // other tile keeps the shimmer while cutting the loop by four.
+      const step = this.camera.zoom < 0.62 ? 2 : 1;
+      for (let y = vis.y0; y <= vis.y1; y += step) {
+        for (let x = vis.x0; x <= vis.x1; x += step) {
           const t = world.terrain[y * world.w + x];
           if (!D.TERRAIN[t].water) continue;
           const h = hash(x, y, 313);
@@ -899,7 +947,7 @@
       for (const s of game.settlements) {
         if (s.ruined) continue;
         const hall = game.primaryHall(s);
-        const radius = hall && hall.complete && hall.def.radius ? hall.def.radius[hall.level] : 9;
+        const radius = hall && hall.complete && hall.def.radius ? hall.def.radius[hall.level] : 12;
         const c = game.settlementCenter(s);
         const p = this.worldToScreen(c.x, c.y);
         if (p.x + radius * z < -100 || p.x - radius * z > this.vw + 100 || p.y + radius * z < -100 || p.y - radius * z > this.vh + 100) continue;
@@ -1074,7 +1122,8 @@
         rrect(ctx, -13, -11, 26, 23, 7); ctx.stroke();
         ctx.setLineDash([]);
       }
-      if (n.type === 'tree') this._drawTreeCluster(ctx, n, ratio, season);
+      if (this.camera.zoom < 0.58) this._drawNodeSimple(ctx, n, ratio, season);
+      else if (n.type === 'tree') this._drawTreeCluster(ctx, n, ratio, season);
       else if (n.type === 'berry') this._drawBerryNode(ctx, n, ratio, season);
       else this._drawOreNode(ctx, n, ratio);
       if (n.clearing) {
@@ -1090,6 +1139,33 @@
         ctx.fillText(D.NODES[n.type].name + ' ' + Math.floor(n.amount) + '/' + n.max, 0, -20);
       }
       ctx.restore();
+    }
+
+    _drawNodeSimple(ctx, n, ratio, season) {
+      const r = 4.2 + ratio * 2.4;
+      if (n.type === 'tree') {
+        ctx.fillStyle = season === 'autumn' ? '#6d5127' : '#2e4628';
+        ctx.beginPath(); ctx.arc(-6, 2, r * 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(5, 3, r * 0.8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = season === 'autumn' ? '#a8793a' : '#4d6b38';
+        ctx.beginPath(); ctx.arc(-1, -5, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#6b5137';
+        ctx.fillRect(-1, 6, 2, 5);
+      } else if (n.type === 'berry') {
+        ctx.fillStyle = '#42622f';
+        ctx.beginPath(); ctx.ellipse(0, 2, r * 1.25, r * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8f3f45';
+        ctx.beginPath(); ctx.arc(-4, -2, 1.5, 0, Math.PI * 2); ctx.arc(4, 1, 1.5, 0, Math.PI * 2); ctx.fill();
+      } else {
+        const col = n.type === 'iron' ? '#7f8a8d' : n.type === 'gold' ? '#b99a53' : '#a7b4b6';
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.3); ctx.lineTo(r * 1.15, -r * 0.15);
+        ctx.lineTo(r * 0.72, r * 1.1); ctx.lineTo(-r * 0.8, r * 1.1);
+        ctx.lineTo(-r * 1.15, -r * 0.2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.moveTo(0, -r * 1.15); ctx.lineTo(r * 0.45, -r * 0.1); ctx.lineTo(-r * 0.1, r * 0.2); ctx.closePath(); ctx.fill();
+      }
     }
 
     _drawTreeCluster(ctx, n, ratio, season) {
@@ -2663,7 +2739,7 @@
         const f = game.getFaction(s.owner);
         if (!f) continue;
         const hall = game.primaryHall(s);
-        const radius = hall && hall.complete ? (hall.def.radius[hall.level] || 9) : 9;
+        const radius = hall && hall.complete ? (hall.def.radius[hall.level] || 12) : 12;
         ctx.fillStyle = U.rgba(f.colors.primary, 0.12);
         ctx.beginPath(); ctx.arc(s.x, s.y, radius, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = f.colors.primary;

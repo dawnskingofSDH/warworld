@@ -214,10 +214,12 @@
     return this.approachTileForBuilding(market, market.x + 1, market.y + 1) || { x: market.x, y: market.y + 2 };
   };
 
-  P.proposeTradeToAI = function (targetId, offer, request, sourceSettlementId) {
+  P.proposeTradeToAI = function (targetId, offer, request, sourceSettlementId, durationDays) {
     const player = this.player;
     const target = this.getFaction(targetId);
     if (!target || target.eliminated) return { ok: false, error: '该势力不存在' };
+    durationDays = Math.round(Number(durationDays) || D.TRADE_TERM.default);
+    durationDays = U.clamp(durationDays, D.TRADE_TERM.min, D.TRADE_TERM.max);
     if (this.atWar(player.id, targetId)) return { ok: false, error: '交战国之间不能通商' };
     if (!this.hasMarket(player.id)) return { ok: false, error: '你需要先建造一座集市' };
     if (!this.hasMarket(targetId)) return { ok: false, error: '对方没有集市，无法通商' };
@@ -257,6 +259,8 @@
     if (offerValue > requestValue * 1.25) acceptChance += 0.22;
     if (offerValue < requestValue * 0.7) acceptChance -= 0.35;
     if (rel < 24) acceptChance -= 0.25;
+    // A very tight delivery window makes the deal less attractive.
+    acceptChance += (durationDays - D.TRADE_TERM.default) * 0.0022;
     const accepted = this.rng.chance(U.clamp(acceptChance, 0.03, 0.94));
     if (!accepted) {
       this.notify(`${D.realmFullName(target)}拒绝了你提出的贸易条件。`, 'trade');
@@ -266,10 +270,11 @@
     const deal = this._finalizeTradeDeal({
       a: player.id, b: targetId,
       fromA: { res: offer.res, amount: offer.amount, market: sourceMarket },
-      fromB: { res: request.res, amount: request.amount, market: aiSource }
+      fromB: { res: request.res, amount: request.amount, market: aiSource },
+      durationDays
     });
     if (!deal.ok) return deal;
-    this.notify(`与${D.realmFullName(target)}的商队出发了。双方将在规定时间内由商人把货物送到集市。`, 'trade', { important: true });
+    this.notify(`与${D.realmFullName(target)}的商队出发了。双方需在 ${durationDays} 天内由商人把货物送到集市。`, 'trade', { important: true });
     this.changeRelation(player.id, targetId, 3);
     this.sfx('coin');
     return { ok: true, accepted: true, deal: deal.deal };
@@ -292,6 +297,10 @@
     if (!routeB.ok) return routeB;
     if (!this.canAddPop(fa.id)) return { ok: false, error: '人口上限已满，无法派出商人' };
     if (!this.canAddPop(fb.id)) return { ok: false, error: '对方的人口已满，无法派出商队' };
+    const durationDays = U.clamp(
+      Math.round(Number(terms.durationDays) || D.TRADE_TERM.default),
+      D.TRADE_TERM.min, D.TRADE_TERM.max
+    );
     // Deduct goods and create caravans.
     this.removeResource(aSrc, terms.fromA.res, terms.fromA.amount);
     this.removeResource(bSrc, terms.fromB.res, terms.fromB.amount);
@@ -299,7 +308,8 @@
       id: this.nextId('deal'), a: terms.a, b: terms.b,
       goodsA: { res: terms.fromA.res, amount: terms.fromA.amount },
       goodsB: { res: terms.fromB.res, amount: terms.fromB.amount },
-      started: this.timeDays, deadline: this.timeDays + 45,
+      started: this.timeDays, durationDays,
+      deadline: this.timeDays + durationDays,
       delivered: { a: false, b: false }, failed: false,
       merchants: {}, completedAt: null
     };
@@ -421,6 +431,17 @@
     return this.tradeDeals.filter((d) => !d.failed && !d.completedAt && (d.a === fid || d.b === fid));
   };
 
+  P.tradeDealsFor = function (fid, includeFinished) {
+    return this.tradeDeals.filter((d) => (d.a === fid || d.b === fid) &&
+      (includeFinished || (!d.failed && !d.completedAt)));
+  };
+
+  P.tradeDeadlineText = function (deal) {
+    if (!deal) return '';
+    const remaining = Math.max(0, Math.ceil(deal.deadline - this.timeDays));
+    return `${U.dateLabel(deal.deadline, true)}（剩余 ${remaining} 天）`;
+  };
+
   // =========================================================
   // Incoming decision prompts
   // =========================================================
@@ -491,7 +512,7 @@
           if (!terms) { this.notify('贸易提议的内容已经失效。', 'trade'); break; }
           const deal = this._finalizeTradeDeal(terms);
           if (deal.ok) {
-            this.notify(`你与${this.factionLabel(p.from)}达成了贸易协议。`, 'trade', { important: true });
+            this.notify(`你与${this.factionLabel(p.from)}达成了贸易协议，期限 ${deal.deal.durationDays} 天。`, 'trade', { important: true });
             this.changeRelation(player.id, p.from, 3);
           } else {
             this.notify(deal.error || '贸易未能成行。', 'warn');
